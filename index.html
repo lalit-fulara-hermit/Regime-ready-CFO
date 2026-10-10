@@ -1,0 +1,1059 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regime-Aware CFO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f6f5f1; --surface:#fcfcfb; --surface-2:#efede7; --line:#dcd9d0;
+  --ink:#0f1b2d; --ink-2:#4a4f58; --ink-3:#777b82;
+  --brand:#12305a; --gold:#8f6328; --brand-soft:#e3e9f2;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#4a3aa7;
+  --good:#1f7a3f; --warn:#a86a00; --bad:#b3261e;
+  --band:rgba(235,104,52,.09);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#121212; --surface:#1a1a19; --surface-2:#242422; --line:#3a3a37;
+    --ink:#f2f1ec; --ink-2:#c3c2b7; --ink-3:#8f8e86;
+    --brand:#8fb3e8; --gold:#d6a65e; --brand-soft:#1f2a3a;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#9085e9;
+    --good:#5cc27f; --warn:#e0a53a; --bad:#ef6b62;
+    --band:rgba(217,89,38,.14);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#121212; --surface:#1a1a19; --surface-2:#242422; --line:#3a3a37;
+  --ink:#f2f1ec; --ink-2:#c3c2b7; --ink-3:#8f8e86;
+  --brand:#8fb3e8; --gold:#d6a65e; --brand-soft:#1f2a3a;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#9085e9;
+  --good:#5cc27f; --warn:#e0a53a; --bad:#ef6b62;
+  --band:rgba(217,89,38,.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,-apple-system,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+header.top{padding:28px 0 12px;border-bottom:1px solid var(--line)}
+.kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+h1{font-family:"Source Serif 4",Georgia,serif;font-size:34px;line-height:1.15;margin:6px 0 4px;color:var(--brand)}
+h1 span{color:var(--gold)}
+.sub{color:var(--ink-2);margin:0}
+.asof{font-size:12.5px;color:var(--ink-3);margin-top:8px}
+nav.tabs{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto;padding-top:8px;padding-bottom:0;scrollbar-width:thin}
+nav.tabs button{flex:0 0 auto;border:0;background:none;color:var(--ink-2);font:500 13.5px Inter,sans-serif;padding:10px 12px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+nav.tabs button b{color:var(--ink-3);font-weight:600;margin-right:6px}
+nav.tabs button[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--gold)}
+nav.tabs button[aria-selected="true"] b{color:var(--gold)}
+section.mod{display:none;padding:26px 0 40px}
+section.mod.on{display:block}
+.mnum{font-family:"Source Serif 4",serif;font-size:15px;color:var(--gold);font-weight:700}
+h2{font-family:"Source Serif 4",Georgia,serif;font-size:26px;line-height:1.2;margin:2px 0 6px;color:var(--ink)}
+.lede{color:var(--ink-2);margin:0 0 20px;max-width:760px}
+h3{font-size:15px;margin:0 0 8px;color:var(--ink)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:1fr}h1{font-size:27px}h2{font-size:22px}}
+.stack{display:flex;flex-direction:column;gap:14px}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;padding:8px 0 8px 34px;position:relative;border-top:1px solid var(--line)}
+.steps li:first-child{border-top:0}
+.steps li::before{content:counter(s);position:absolute;left:0;top:8px;width:22px;height:22px;border-radius:50%;background:var(--brand-soft);color:var(--brand);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.take{margin-top:18px;border-left:3px solid var(--gold);background:var(--surface);padding:12px 16px;border-radius:0 8px 8px 0}
+.take b{color:var(--gold);font-size:12px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:2px}
+.navrow{display:flex;justify-content:space-between;margin-top:22px}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:500 14px Inter,sans-serif;padding:9px 14px;border-radius:8px;cursor:pointer}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--surface)}
+:root[data-theme="dark"] .btn.primary{color:#0f1b2d}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:var(--surface);color:var(--ink-2);font:500 13px Inter,sans-serif;padding:8px 12px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--ink-2);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+.muted{color:var(--ink-3)}
+.small{font-size:12.5px}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid var(--line)}
+.pill.hi{color:var(--bad);border-color:var(--bad)}
+.pill.md{color:var(--warn);border-color:var(--warn)}
+.pill.lo{color:var(--good);border-color:var(--good)}
+/* framework */
+.quad{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.quad{grid-template-columns:1fr}}
+.q{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;position:relative;transition:border-color .2s}
+.q .qn{font-family:"Source Serif 4",serif;font-size:28px;font-weight:700;line-height:1;color:var(--qc)}
+.q h3{margin:6px 0 2px;color:var(--qc);font-size:14px;letter-spacing:.04em;text-transform:uppercase}
+.q .voice{font-style:italic;color:var(--ink-2);font-size:13.5px;margin:0 0 8px}
+.q ul{margin:0;padding-left:18px;font-size:13.5px}
+.q .nat{margin-top:10px;font-size:12px;color:var(--ink-3)}
+.q .weight{display:flex;align-items:center;gap:8px;margin:10px 0 0;padding-top:10px;border-top:1px dashed var(--line);font-size:13px}
+.meter{flex:0 0 90px;height:6px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--qc);border-radius:4px;transition:width .35s}
+.q .now{font-size:13px;color:var(--ink);margin-top:6px}
+.q.focus{border-color:var(--qc);box-shadow:0 0 0 1px var(--qc) inset}
+.overlay{margin-top:14px}
+.overlay .items{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+@media (max-width:760px){.overlay .items{grid-template-columns:1fr 1fr}}
+.overlay .it b{display:block;font-size:13px}
+.overlay .it span{font-size:12.5px;color:var(--ink-2)}
+.closing{font-family:"Source Serif 4",serif;font-size:19px;color:var(--brand);margin:14px 0 0}
+details{margin-top:14px}
+summary{cursor:pointer;color:var(--brand);font-weight:500}
+/* charts */
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .ax{stroke:var(--line);stroke-width:1}
+.chart .grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3;opacity:.7}
+.chart text{fill:var(--ink-3);font:11px Inter,sans-serif}
+.chart .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart .band{fill:var(--band)}
+.chart .vl{stroke:var(--ink-3);stroke-dasharray:3 3}
+.chart .xh{stroke:var(--ink-3);stroke-width:1}
+.chart .dot{stroke:var(--surface);stroke-width:2}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12px;box-shadow:0 2px 10px rgba(0,0,0,.12);white-space:nowrap;display:none;z-index:3}
+.tip .r{display:flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:10px;height:3px;border-radius:2px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);margin:0 0 6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.ctitle{font-size:13.5px;font-weight:600;margin:0 0 2px}
+.cnote{font-size:12px;color:var(--ink-3);margin:0 0 6px}
+/* build-up */
+.slider{display:grid;grid-template-columns:1fr 64px;align-items:center;gap:4px 10px;margin:8px 0}
+.slider label{font-size:13.5px}
+.slider label small{display:block;color:var(--ink-3);font-size:12px}
+.slider output{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+.slider input{grid-column:1/3;width:100%;accent-color:var(--brand)}
+.slider input:disabled{opacity:.35}
+.stackbar{display:flex;height:42px;border-radius:6px;overflow:hidden;margin:10px 0 6px;background:var(--surface-2)}
+.stackbar div{height:100%;transition:width .3s;border-right:2px solid var(--surface);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;overflow:hidden;white-space:nowrap}
+.stackbar div:last-child{border-right:0}
+.big{font-family:"Source Serif 4",serif;font-size:34px;font-weight:700;color:var(--brand);line-height:1}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:560px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface-2);border-radius:8px;padding:10px 12px}
+.kpi .l{font-size:12px;color:var(--ink-3)}
+.kpi .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12px;color:var(--ink-2)}
+.opt{display:block;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:8px 0;cursor:pointer;background:var(--surface)}
+.opt input{margin-right:8px;accent-color:var(--brand)}
+.opt.sel{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand) inset}
+.hidden{display:none}
+.reveal-box{border:1px solid var(--gold);border-radius:10px;padding:16px;background:var(--surface)}
+.theme-t{position:absolute;right:16px;top:20px}
+header.top{position:relative}
+.foot{font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding:16px 0 30px}
+a{color:var(--brand)}
+
+.tip{white-space:normal;max-width:280px}
+.tip .sw-note{margin-top:5px;padding-top:5px;border-top:1px solid var(--line);color:var(--ink);font-size:12px;line-height:1.4}
+.tip .sw-note b{color:var(--gold)}
+.gtip{position:fixed;z-index:50;pointer-events:none;background:var(--surface);border:1px solid var(--gold);border-radius:8px;padding:8px 11px;font-size:12.5px;line-height:1.45;max-width:300px;box-shadow:0 4px 18px rgba(0,0,0,.16);display:none;color:var(--ink)}
+.gtip b.h{display:block;color:var(--gold);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+[data-sw]{cursor:help}
+.selrow{display:flex;align-items:center;gap:10px;margin:6px 0;flex-wrap:wrap}
+.sellab{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);width:120px}
+.seg button small{display:block;font-size:10.5px;opacity:.75;font-weight:400}
+.reginfo{margin:10px 0 14px;font-size:13.5px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.reginfo b{color:var(--ink)}
+.reginfo .num{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}
+/* framework 2x2 */
+.fw{position:relative;display:grid;grid-template-columns:34px 1fr 1fr;grid-template-rows:auto 1fr 1fr;gap:12px}
+.fw-h{text-align:center;font-size:12px;font-weight:600;letter-spacing:.14em;color:var(--ink-2)}
+.fw-h small{display:block;font-weight:400;letter-spacing:0;color:var(--ink-3)}
+.fw-now{grid-column:2;grid-row:1}.fw-next{grid-column:3;grid-row:1}
+.fw-v{display:flex;align-items:center;justify-content:center}
+.fw-v span{writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:600;letter-spacing:.14em;color:var(--ink-2)}
+.fw-prot{grid-column:1;grid-row:2}.fw-crea{grid-column:1;grid-row:3}
+#q0{grid-column:2;grid-row:2}#q1{grid-column:3;grid-row:2}#q2{grid-column:2;grid-row:3}#q3{grid-column:3;grid-row:3}
+.fw-q{--a:.5;border-radius:12px;padding:16px 18px;border:1px solid var(--line);background:linear-gradient(180deg,color-mix(in srgb,var(--qc) calc(var(--a)*22%),var(--surface)) 0%,var(--surface) 75%);transition:background .4s,transform .3s,box-shadow .3s;position:relative;min-height:230px}
+.fw-q.focus{border-color:var(--qc);box-shadow:0 0 0 2px color-mix(in srgb,var(--qc) 55%,transparent) inset}
+.fw-q.dim{opacity:.72}
+#q0{z-index:2}#q3 .top{padding-left:44px}#q1{padding-bottom:30px}
+.fw-q .top{display:flex;align-items:baseline;gap:10px}
+.fw-q .qn{font-family:"Source Serif 4",serif;font-size:30px;font-weight:700;line-height:1;color:var(--qc)}
+.fw-q h3{margin:0;color:var(--qc);font-size:13.5px;letter-spacing:.05em;text-transform:uppercase}
+.fw-q .voice{font-style:italic;color:var(--ink-2);font-size:13px;margin:4px 0 8px}
+.fw-q .wt{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:8px}
+.fw-q .wt .meter{flex:1 1 auto;max-width:170px;height:8px}
+.fw-q .act{font-size:13.5px;color:var(--ink);background:var(--surface);border-left:3px solid var(--qc);padding:6px 10px;border-radius:0 6px 6px 0;margin-bottom:10px}
+.fw-q .act div+div{margin-top:4px;color:var(--ink-2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2)}
+.chip:hover{border-color:var(--qc);color:var(--ink)}
+.fw-q .nat{margin-top:10px;font-size:11.5px;color:var(--ink-3)}
+.fw-q .open{margin-top:10px}
+.fw-core{position:absolute;right:-52px;bottom:-52px;width:92px;height:92px;border-radius:50%;background:var(--brand);color:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 0 6px var(--bg);pointer-events:none;z-index:2}
+.fw-core b{font-family:"Source Serif 4",serif;font-size:24px;line-height:1}
+.fw-core span{font-size:10px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+@media (max-width:760px){.fw{grid-template-columns:1fr;grid-template-rows:none}.fw-h,.fw-v,.fw-core{display:none}#q0,#q1,#q2,#q3{grid-column:1;grid-row:auto}.sellab{width:auto}}
+/* connected CFO */
+.tshape{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:6px}
+.tcell{border:1px solid var(--line);border-radius:8px;padding:10px 6px;text-align:center;font-size:12.5px;font-weight:600;background:var(--surface-2);color:var(--ink-2);transition:all .25s;min-height:54px;display:flex;align-items:center;justify-content:center}
+.tcell.lit{background:var(--brand);color:var(--surface);border-color:var(--brand)}
+.tstem{grid-column:4/6;border-radius:0 0 10px 10px;background:color-mix(in srgb,var(--gold) 18%,var(--surface));border:1px solid var(--gold);padding:12px;text-align:center;font-size:12.5px;color:var(--ink);transition:all .25s}
+.tstem.lit{background:var(--gold);color:var(--surface)}
+.tstem b{display:block;font-size:13px}
+.tcell.fin{border-color:var(--gold);border-bottom-left-radius:0;border-bottom-right-radius:0}
+@media (max-width:760px){.tshape{grid-template-columns:repeat(4,1fr)}.tstem{grid-column:1/5}}
+.chain{display:flex;gap:0;margin-top:12px;overflow-x:auto;padding-bottom:4px}
+.step{flex:1 0 140px;position:relative;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;cursor:pointer;margin-right:22px;transition:all .2s}
+.step:last-child{margin-right:0}
+.step::after{content:"";position:absolute;right:-17px;top:50%;width:12px;height:12px;border-top:2px solid var(--ink-3);border-right:2px solid var(--ink-3);transform:translateY(-50%) rotate(45deg)}
+.step:last-child::after{display:none}
+.step .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.step .t{font-size:13px;font-weight:600;margin-top:2px}
+.step.on{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand) inset;background:var(--brand-soft)}
+.chainDetail{margin-top:12px;border-left:3px solid var(--brand);background:var(--surface-2);border-radius:0 8px 8px 0;padding:12px 16px;font-size:14px}
+.chainDetail .so{margin-top:8px;font-weight:500}
+.chainDetail .so b{color:var(--gold)}
+.chainDetail .tags{margin-top:8px;font-size:12px;color:var(--ink-3)}
+.fsbtn{position:absolute;right:136px;top:20px}
+@media (max-width:760px){.fsbtn{display:none}}
+.zl{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:6px}
+.zl i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.chart .zinv{fill:color-mix(in srgb,var(--bad) 16%,transparent)}
+.chart .zsteep{fill:color-mix(in srgb,var(--s1) 12%,transparent)}
+td.up{color:var(--bad)} td.dn{color:var(--good)}
+tr[data-sw]:hover td{background:var(--surface-2)}
+
+/* v3: one-screen framework */
+nav.tabs .wrap{scrollbar-width:none}
+nav.tabs .wrap::-webkit-scrollbar{display:none}
+nav.tabs button{padding:10px 10px}
+#m1{padding-top:16px}
+#m1 h2{font-size:23px;margin-bottom:2px}
+#m1 .lede{margin-bottom:12px}
+.m1grid{display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start}
+.rpanel{position:sticky;top:52px}
+.rpanel .sellab{width:auto;margin-bottom:4px}
+.vlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.vlist button{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border:0;border-bottom:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:500 12.5px Inter,sans-serif;padding:6px 10px;cursor:pointer;text-align:left}
+.vlist button:last-child{border-bottom:0}
+.vlist button small{font-size:11px;opacity:.75;white-space:nowrap}
+.vlist button[aria-pressed="true"]{background:var(--brand);color:var(--surface)}
+.vlist button:hover:not([aria-pressed="true"]){background:var(--surface-2)}
+.rpanel .reginfo{margin:10px 0 0;font-size:12.5px;padding:9px 11px;line-height:1.45}
+.rnums{display:flex;gap:8px;margin:6px 0}
+.rnums span{flex:1;background:var(--surface-2);border-radius:6px;padding:4px 7px;font-size:11px;color:var(--ink-3)}
+.rnums b{display:block;font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+.fw{gap:10px;grid-template-columns:24px 1fr 1fr}
+.fw-h{font-size:11px}.fw-h small{display:none}
+.fw-v span{font-size:11px}
+.fw-q{min-height:0;padding:12px 14px}
+.fw-q .qn{font-size:24px}
+.fw-q h3{font-size:12.5px}
+.fw-q .top{margin-bottom:6px}
+.fw-q .wt{margin-bottom:6px;font-size:12px}
+.fw-q .act{font-size:12.5px;padding:5px 9px;margin-bottom:8px}
+.chip{font-size:11.5px;padding:2px 8px}
+.chips{gap:4px}
+.fw-q .open{margin-top:8px;padding:6px 10px;font-size:12.5px}
+#q1{padding-bottom:12px}
+.fw-core{width:76px;height:76px;right:-43px;bottom:-43px}
+.fw-core b{font-size:20px}.fw-core span{font-size:8.5px}
+#q3 .top{padding-left:34px}
+@media (max-width:900px){.m1grid{grid-template-columns:1fr}.rpanel{position:static}}
+/* stay in touch */
+.note{font-family:"Source Serif 4",Georgia,serif;font-size:18px;line-height:1.6;color:var(--ink)}
+.note .sig{margin-top:10px;font-size:16px;color:var(--gold)}
+.li-btn{display:inline-flex;align-items:center;gap:8px;background:#0a66c2;color:#fff;border-radius:8px;padding:10px 16px;font:600 14px Inter,sans-serif;text-decoration:none;margin-top:14px}
+.li-btn svg{width:18px;height:18px;fill:#fff}
+.fb label{display:block;font-size:13.5px;font-weight:500;margin:14px 0 4px}
+.fb label small{font-weight:400;color:var(--ink-3)}
+.fb textarea,.fb input{width:100%;font:14px Inter,sans-serif;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.fb textarea{min-height:76px;resize:vertical}
+.fb textarea:focus,.fb input:focus{outline:2px solid var(--brand);outline-offset:0;border-color:var(--brand)}
+.fb .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:620px){.fb .row2{grid-template-columns:1fr}}
+.fb .sent{display:none;border:1px solid var(--good);color:var(--good);border-radius:8px;padding:12px 14px;margin-top:14px;font-weight:500}
+.li-in{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:3px;background:#fff;color:#0a66c2;font:700 13px Arial,sans-serif}
+.m1grid{grid-template-columns:250px 1fr}
+.vlist button{padding:5px 10px}
+.rpanel .reginfo{font-size:12px;padding:8px 10px;line-height:1.4}
+.rnums{margin:4px 0}.rnums b{font-size:14px}
+.ex-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.ex-grid{grid-template-columns:1fr}}
+.exp{font-size:13px;border-left:3px solid var(--line);padding:4px 10px;margin:6px 0;color:var(--ink-2)}
+.exp b{color:var(--ink)}
+.ex-step{display:flex;gap:6px;font-size:11.5px}
+.ex-step span{flex:1;text-align:center;padding:5px;border-radius:6px;background:var(--surface-2);color:var(--ink-3)}
+.ex-step span.on{background:var(--brand);color:var(--surface)}
+.ex-step span.done{background:var(--brand-soft);color:var(--brand)}
+.ex-news{margin-top:6px;background:color-mix(in srgb,var(--bad) 8%,var(--surface));border-left:3px solid var(--bad);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13px}
+.ex-news div+div{margin-top:3px}
+.ex-split{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:4px 0}
+.ex-split div{height:100%;transition:width .2s}
+.ex-cush{margin-top:12px;font-size:13px;padding:8px 12px;border-radius:6px}
+.ex-cush.ok{background:color-mix(in srgb,var(--good) 10%,var(--surface));color:var(--good)}
+.ex-cush.bad{background:color-mix(in srgb,var(--bad) 10%,var(--surface));color:var(--bad)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <button class="btn fsbtn" id="fsBtn" aria-label="Full screen">Full screen</button>
+    <button class="btn theme-t" id="themeBtn" aria-label="Switch light or dark">Light / Dark</button>
+    <div class="kicker">ISB CFO Programme · Module 4 · Final session</div>
+    <h1>The <span>Regime-Aware</span> CFO</h1>
+    <p class="sub">Cash keeps the firm alive. Cost of capital decides what that cash costs. Yields set the cost of capital.</p>
+    <div class="asof" id="asof"></div>
+  </div>
+</header>
+<nav class="tabs"><div class="wrap" id="tabs" role="tablist"></div></nav>
+
+<main class="wrap">
+
+<!-- 1 -->
+<section class="mod" id="m1" data-tab="CFO role">
+  <div class="mnum">01</div>
+  <h2>The CFO role has four parts; the regime decides which one leads</h2>
+  <p class="lede">The mandate never changes: protect financial integrity and create long-term value. Pick a money regime and a business regime to see where the CFO's attention goes.</p>
+  <div class="m1grid" id="m1grid">
+  <aside class="rpanel">
+    <div class="sellab">Money regime</div>
+    <div class="vlist" id="moneySeg" role="group" aria-label="Money regime"></div>
+    <div class="sellab" style="margin-top:10px">Business regime</div>
+    <div class="vlist" id="bizSeg" role="group" aria-label="Business regime"></div>
+    <div class="reginfo" id="regInfo"></div>
+  </aside>
+  <div class="fw" id="fw">
+    <div class="fw-h fw-now">NOW<small>today's balance sheet</small></div>
+    <div class="fw-h fw-next">NEXT<small>the future balance sheet</small></div>
+    <div class="fw-v fw-prot"><span>PROTECT VALUE</span></div>
+    <div class="fw-v fw-crea"><span>CREATE VALUE</span></div>
+    <div class="fw-q" id="q0"></div><div class="fw-q" id="q1"></div>
+    <div class="fw-q" id="q2"></div><div class="fw-q" id="q3"></div>
+  </div>
+  </div>
+  <p class="small muted" style="margin:8px 0 0">Hover any item or title for its "so what". Click part 04 to open the connected CFO.</p>
+  <div class="card overlay">
+    <h3>Decision overlay: the skills that cut across all four parts</h3>
+    <div class="items">
+      <div class="it" data-sw="Yields, cycles, geopolitics and climate change the cost and availability of money. Seeing a shift three months early is worth more than any model."><b>Read the regime</b><span>Macro, cycles and yields. See shifts early.</span></div>
+      <div class="it" data-sw="The data is never complete when the decision is due. The CFO's job is to act on odds, then adjust."><b>Judge under uncertainty</b><span>Act on incomplete information.</span></div>
+      <div class="it" data-sw="Lenders and investors fund a story they trust. The same numbers, explained well, lower the cost of capital."><b>Communicate</b><span>Shape the story. Build trust with boards and lenders.</span></div>
+      <div class="it" data-sw="One restatement can cost more in credibility than a year of good results earns."><b>Integrity</b><span>Numbers people can rely on.</span></div>
+      <div class="it" data-sw="Faster, cleaner data shortens the time from signal to decision."><b>Technology fluency</b><span>Data and tools that speed up decisions.</span></div>
+    </div>
+    <p class="closing">A CFO does not maximise growth. A CFO maximises optionality under constraints.</p>
+  </div>
+  <details>
+    <summary>What changed from the first version of this framework</summary>
+    <ol class="small" style="color:var(--ink-2)">
+      <li>The four parts now sit on two axes: protect or create value, now or next. Each task belongs to one box.</li>
+      <li>Working capital now sits only in part 01. It appeared in both 01 and 03 before.</li>
+      <li>Hedging now sits only in part 02. Part 01 keeps enterprise risk identification.</li>
+      <li>The "enablers" row and the "decision overlay" are merged. Communication and forward-looking outlook appeared twice.</li>
+      <li>Two regime selectors are new. The four parts are constant; their weight is not.</li>
+    </ol>
+  </details>
+  <div class="take"><b>Takeaway</b>The four parts never change. The money regime and the business regime change which part needs the CFO most.</div>
+</section>
+
+<!-- Connected CFO (opens from part 04) -->
+<section class="mod extra" id="ng" data-tab="The connected CFO">
+  <button class="btn" id="ngBack">Back to the framework</button>
+  <div class="mnum" style="margin-top:16px">04+</div>
+  <h2>The connected CFO: deep in finance, wide enough to connect the dots</h2>
+  <p class="lede">The next-generation CFO is a generalist with a deep finance core. A war in the Gulf or a warm Pacific reaches the cost of capital in a few months. To see it coming, the CFO needs enough geography, history, technology, law, business, operations and political science to connect the dots, and enough finance to turn them into a decision.</p>
+
+  <div class="card">
+    <h3>The shape of the connected CFO</h3>
+    <p class="small muted" style="margin-top:0">Wide across the top, deep in one place. Hover a discipline to see what "enough" means.</p>
+    <div class="tshape" id="tshape"></div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>Connect the dots: two 2026 examples</h3>
+    <div class="seg" id="chainSeg" role="group" aria-label="Example">
+      <button data-c="gulf" aria-pressed="true">Gulf war and Saudi attacks</button>
+      <button data-c="nino" aria-pressed="false">El Niño</button>
+    </div>
+    <p class="small muted" style="margin:8px 0 0">Click each step. The disciplines it needs light up in the shape above. Steps marked <span class="pill lo">Fact</span> are sourced; steps marked <span class="pill md">Reasoning</span> are the likely effect, not yet measured.</p>
+    <div class="chain" id="chain"></div>
+    <div class="chainDetail" id="chainDetail"></div>
+  </div>
+
+  <div class="grid2" style="margin-top:14px">
+    <div class="card">
+      <h3>Guardrails: where connecting dots goes wrong</h3>
+      <ol class="steps small">
+        <li><b>Breadth without depth is commentary.</b> The CFO is accountable for the numbers. Finance must stay deep.</li>
+        <li><b>No one is expert in ten fields.</b> The skill is knowing which question to ask, and who to ask.</li>
+        <li><b>Seeing patterns that are not there.</b> A good story is not evidence. Test the chain against data at every step.</li>
+        <li><b>Remembering only the right calls.</b> We recall the generalists who saw it coming, not the ones who cried wolf.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>Turn any world event into a decision: four questions</h3>
+      <ol class="steps small">
+        <li><b>Where does it hit?</b> Which line of the P&L, balance sheet or cash flow.</li>
+        <li><b>How big?</b> A range in money, not a word like "significant".</li>
+        <li><b>How likely, and how soon?</b> Odds and timing, written down.</li>
+        <li><b>What do I do now, and what would change my mind?</b> One action and one trigger to review it.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="take"><b>Takeaway</b>Breadth helps you see the shock coming. Finance depth turns it into a number. Discipline turns the number into an action.</div>
+  <div class="card" style="margin-top:14px">
+    <h3>Sources for the examples</h3>
+    <ul class="small" style="margin:0;padding-left:18px;color:var(--ink-2)">
+      <li><a href="https://www.kitco.com/news/off-the-wire/2026-03-31/iran-war-shock-drives-steepest-hike-yet-oil-price-forecasts" target="_blank" rel="noopener">Reuters via Kitco, 31 Mar 2026: Iran war shock and oil forecasts</a></li>
+      <li><a href="https://www.agbi.com/oil-and-gas/2026/04/brent-over-120-as-markets-see-no-imminent-end-to-war/" target="_blank" rel="noopener">AGBI, 30 Apr 2026: Brent over $120</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/2026_Aramco_refinery_attack" target="_blank" rel="noopener">Wikipedia: 2026 Aramco refinery attack (Ras Tanura)</a></li>
+      <li><a href="https://aljazeera.com/economy/2026/9/25/oil-prices-jump-after-yemens-houthis-claim-attacks-on-saudi-facilities" target="_blank" rel="noopener">Al Jazeera, 25 Sep 2026: Houthi attacks on Saudi facilities</a></li>
+      <li><a href="https://superkalam.com/current-affairs/15-09-2026/pressure-on-food-prices-el-nino-effect-geopolitical-tensions-pg1-35fc5eab-794c-46ae-a975-947c3abee18a" target="_blank" rel="noopener">Current affairs summary, 15 Sep 2026: El Niño and food prices</a></li>
+      <li><a href="https://www.businesstoday.in/amp/india/story/will-a-below-normal-monsoon-and-el-nino-fuel-food-inflation-concerns-533877-2026-05-29" target="_blank" rel="noopener">Business Today, 29 May 2026: below-normal monsoon and El Niño</a></li>
+      <li>US CPI, fed funds and term premium: FRED. US yields: Aadi International research data.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="mod" id="m2" data-tab="Cost of capital">
+  <div class="mnum">02</div>
+  <h2>Cash is the constraint; cost of capital is the price of loosening it</h2>
+  <p class="lede">A mid-size firm can almost always raise money when yields are low and investors are confident. When yields spike, money costs more, and for weaker borrowers it may not be available at all. So the regime sets both the price and the availability of cash.</p>
+  <div class="card">
+    <p class="ctitle">So what: when the 3-month line rises above the 10-year line, a slowdown has often followed</p>
+    <p class="cnote">US Treasury yields, monthly average, Jan 2000 to Oct 2026. 3-month bill = the policy rate today. 10-year note = the long-term price of money. Hover for the reading at each point.</p>
+    <div class="chart" id="cAnnual"></div>
+    <div class="zl"><span><i style="background:color-mix(in srgb,var(--bad) 30%,transparent)"></i>Inverted: 3-month above 10-year</span><span><i style="background:color-mix(in srgb,var(--s1) 25%,transparent)"></i>Steep: 10-year more than 2 points above 3-month</span></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Two regimes, two different CFO jobs</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th></th><th>Low yields, confident investors</th><th>Yields spiking</th></tr></thead>
+      <tbody>
+        <tr data-sw="Price is what you pay. It is visible every day in yields."><td><b>Price of money</b></td><td>Low. US 10-year averaged 0.89% in 2020.</td><td>High. US 10-year reached 5.31% on 5 Oct 2026, the highest since mid-2007.</td></tr>
+        <tr data-sw="Access is whether anyone will lend at all. In 2008 it mattered more than price."><td><b>Access to money</b></td><td>Easy. Lenders compete to lend.</td><td>Selective. Mid-size and weaker borrowers are cut off first.</td></tr>
+        <tr><td><b>Cost of holding no cash</b></td><td>Low. You can borrow quickly when needed.</td><td>High. You borrow at the worst price, or cannot borrow.</td></tr>
+        <tr><td><b>What the CFO should do</b></td><td>Lock in long-term fixed debt. Extend maturities. Build a buffer while it is cheap.</td><td>Protect liquidity. Raise hurdle rates. Delay marginal capex. Hedge rate risk.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="take"><b>Takeaway</b>The cheapest time to secure cash is when nobody feels they need it.</div>
+</section>
+
+<!-- 3 -->
+<section class="mod" id="m3" data-tab="Yield build-up">
+  <div class="mnum">03</div>
+  <h2>Every yield is built from five premiums</h2>
+  <p class="lede">A lender asks to be paid for five things. Build the yield one layer at a time. A US Treasury carries only the first three. A company bond adds liquidity and default premiums on top.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="seg" id="bondSeg" role="group" aria-label="Bond type">
+        <button data-b="tsy" aria-pressed="true">US Treasury</button>
+        <button data-b="corp" aria-pressed="false">Company bond</button>
+      </div>
+      <div style="margin-top:6px" class="small muted">Load actual US 10-year readings:</div>
+      <div class="seg" id="presetSeg" style="margin-top:4px">
+        <button data-p="feb" aria-pressed="false">Feb 2026</button>
+        <button data-p="sep" aria-pressed="true">Sep 2026</button>
+      </div>
+      <div id="sliders"></div>
+    </div>
+    <div class="card">
+      <div class="small muted">Total yield</div>
+      <div class="big" id="yTotal">0.00%</div>
+      <div class="stackbar" id="yBar"></div>
+      <div class="legend" id="yLegend"></div>
+      <ol class="steps small" id="yExplain"></ol>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>What actually moved the US 10-year from Feb to Sep 2026 (monthly averages)</h3>
+    <div class="tablewrap"><table id="decompTbl"></table></div>
+    <p class="small muted" style="margin:8px 0 0">Inflation premium = 10-year breakeven inflation (market measure). Term premium = Kim-Wright model estimate from the Federal Reserve; it is a model output, not a traded price. Real return = what is left over.</p>
+  </div>
+  <div class="take"><b>Takeaway</b>The 2026 rise came mostly from real yield and term premium, not from higher expected inflation. Lenders want more pay to lend for long periods.</div>
+</section>
+
+<!-- 4 -->
+<section class="mod" id="m4" data-tab="Cost of equity">
+  <div class="mnum">04</div>
+  <h2>Cost of equity also starts from the yield, then adds risk</h2>
+  <p class="lede">CAPM: cost of equity = risk-free rate + beta × equity risk premium. The risk-free rate is the government bond yield. Beta and the risk premium come from market prices and volatility. In a stress period, all three can move at once.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="seg" id="eqSeg" role="group" aria-label="Scenario">
+        <button data-e="calm" aria-pressed="true">Calm market</button>
+        <button data-e="stress" aria-pressed="false">Stress market</button>
+      </div>
+      <div id="eqSliders"></div>
+      <p class="small muted" style="margin:6px 0 0">Stress applies three changes: risk-free rate +1.29 points (the actual US 10-year rise from 27 Feb to 8 Oct 2026), equity risk premium +1.0 point and beta pulled halfway towards 1.0. The last two are illustrative, not measured.</p>
+    </div>
+    <div class="card">
+      <div class="kpis">
+        <div class="kpi" data-sw="What shareholders expect to earn. If the firm returns less, the share price falls until it does."><div class="l">Cost of equity</div><div class="v" id="ke">0%</div><div class="d" id="keD"></div></div>
+        <div class="kpi" data-sw="Interest is tax-deductible, so debt costs less than its coupon. That is why some debt lowers WACC."><div class="l">Cost of debt after tax</div><div class="v" id="kd">0%</div><div class="d" id="kdD"></div></div>
+        <div class="kpi" data-sw="WACC is the hurdle rate. Every project must earn more than this to create value."><div class="l">WACC</div><div class="v" id="wacc">0%</div><div class="d" id="waccD"></div></div>
+      </div>
+      <h3 style="margin-top:16px">Where the rise in cost of equity comes from</h3>
+      <div class="tablewrap"><table id="chanTbl"></table></div>
+      <h3 style="margin-top:16px">What it does to a project</h3>
+      <p class="small" id="projLine"></p>
+    </div>
+  </div>
+  <div class="take"><b>Takeaway</b>A yield spike raises the hurdle rate for both debt and equity. Projects that passed in February can fail in October with no change in the project itself.</div>
+</section>
+
+<!-- 5 -->
+<section class="mod" id="m5" data-tab="Signals">
+  <div class="mnum">05</div>
+  <h2>The warning signs were visible from March 2026</h2>
+  <p class="lede">Nobody can predict the exact timing of a regime change. An expert can read the signals and shift the odds. The shaded area on each chart is 2026.</p>
+  <div class="card">
+    <h3>Signal checklist: what the CFO could see</h3>
+    <div class="tablewrap"><table id="sigTbl"></table></div>
+  </div>
+  <div class="grid2" style="margin-top:14px" id="sigCharts"></div>
+  <div class="card" style="margin-top:14px">
+    <h3>Market snapshot</h3>
+    <p class="small muted" style="margin-top:0">From our Aadi International research data. Static snapshot, not live. <span id="mkAsof"></span></p>
+    <div class="grid2">
+      <div>
+        <p class="ctitle">US yield curve: 27 Feb 2026 vs 8 Oct 2026</p>
+        <p class="cnote">The long end rose more than the short end. The curve steepened.</p>
+        <div class="chart" id="cCurve"></div>
+      </div>
+      <div>
+        <p class="ctitle">Other markets, month-end close</p>
+        <p class="cnote">Bonds and equities are telling different stories.</p>
+        <div class="tablewrap"><table id="mkTbl"></table></div>
+      </div>
+    </div>
+    <p class="small" style="margin:12px 0 0">For more on yield behaviour, see the <a href="https://macro-market-monitor.zoek-wj-2019.chatgpt.site/" target="_blank" rel="noopener">macro market monitor</a> used in class.</p>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Questions for the treasury desk</h3>
+    <ol class="steps small">
+      <li>When yields start rising, what does the treasury team see first, before the CFO feels it in borrowing costs?</li>
+      <li>US 100 is near its highs while bond yields are at 19-year highs. Which market is right, and how would a CFO act on that gap?</li>
+      <li>If you had to fund $150 million next year, would you lock it in now, wait, or split it? What would change your mind?</li>
+    </ol>
+  </div>
+  <div class="take"><b>Takeaway</b>You do not need certainty to act. Several signals pointing the same way is enough to buy protection.</div>
+</section>
+
+<!-- 6 -->
+<section class="mod" id="m6" data-tab="Exercise">
+  <div class="mnum">06</div>
+  <h2>Two decisions, one funding problem, no hindsight</h2>
+  <p class="lede">You are the CFO. Decide using only what you could see on each date. Then see how your choices play out on two paths: what actually happened, and what could have happened.</p>
+  <div class="ex-grid">
+    <div class="card">
+      <h3>The company</h3>
+      <ul class="small" style="margin:0;padding-left:18px">
+        <li>Revenue: $500 million. Rated BBB, investment grade.</li>
+        <li>A <b>$150 million bond matures in December 2026</b>. It must be refinanced.</li>
+        <li>Cash on hand: $40 million. The board wants at least <b>$25 million</b> kept as a safety buffer.</li>
+        <li>The oil shock will tie up an extra <b>$20 million</b> in working capital.</li>
+        <li>The board has proposed a <b>$30 million share buyback</b>.</li>
+      </ul>
+      <h3 style="margin-top:14px">Your three choices for the $150 million</h3>
+      <div class="exp" data-sw="You issue a new 10-year bond now. You pay its interest from today, while the old bond is still outstanding. That overlap is called negative carry."><b>Lock now.</b> Issue a 10-year fixed bond today. You get the cash now, at today's rate, but pay interest on both bonds until December.</div>
+      <div class="exp" data-sw="Banks call this a treasury lock. It fixes the Treasury part of your rate only. Your own credit spread is still set in December."><b>Hedge.</b> Fix today's Treasury rate without borrowing yet. If rates rise, the hedge pays you; if they fall, you pay. You still borrow in December, and your credit spread is not fixed.</div>
+      <div class="exp" data-sw="Waiting keeps every option open, but leaves both the rate and your access to money to chance."><b>Wait.</b> Refinance in December at whatever rate and spread the market offers then.</div>
+      <p class="small muted" style="margin:10px 0 0">Assumptions are illustrative: current credit spread 1.50 points over Treasuries; cash earns the 3-month bill rate.</p>
+    </div>
+    <div class="card" id="exRound"></div>
+  </div>
+  <div class="reveal-box hidden" id="reveal" style="margin-top:14px"></div>
+  <div class="take"><b>Takeaway</b>The best choice is not the one that wins on the path that happened. It is the one you could live with on every path.</div>
+</section>
+
+<!-- 7 -->
+<section class="mod" id="m7" data-tab="Close">
+  <div class="mnum">07</div>
+  <h2>Five things to keep</h2>
+  <p class="lede">The final session in one page.</p>
+  <div class="card">
+    <ol class="steps">
+      <li><b>Cash is the constraint.</b> Running out of it ends the firm. Everything else is secondary.</li>
+      <li><b>Cost of capital is the price of loosening that constraint.</b> It rises for debt and equity at the same time.</li>
+      <li><b>Yields drive the cost of capital.</b> Real return, inflation, liquidity, term and default premiums. Know which one is moving.</li>
+      <li><b>US Treasury yields are the anchor.</b> They set the direction of global capital flows and the risk-free rate in every valuation.</li>
+      <li><b>Read the regime, then act early.</b> Lock in cheap money in good times. Protect liquidity when the signals turn.</li>
+    </ol>
+    <p class="closing">A CFO does not maximise growth. A CFO maximises optionality under constraints.</p>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>Data sources</h3>
+    <ul class="small" style="margin:0;padding-left:18px;color:var(--ink-2)">
+      <li>US Treasury yields (3-month, 2-, 5-, 10- and 30-year), daily, 2000 to 8 Oct 2026; dollar index, US 100 and gold: Aadi International research data (TradingView exports).</li>
+      <li>CPI and core CPI (year-on-year), unemployment rate, effective fed funds rate, 10-year breakeven inflation and 10-year term premium (Kim-Wright), monthly: FRED, Federal Reserve Bank of St. Louis. Series: CPIAUCSL, CPILFESL, UNRATE, FEDFUNDS, T10YIE, THREEFYTP10.</li>
+      <li>October 2025 CPI and unemployment are missing in the source data.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="mod" id="m8" data-tab="Stay in touch">
+  <div class="mnum">08</div>
+  <h2>Stay in touch</h2>
+  <p class="lede">This page is yours to keep. Come back to it whenever you need it.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="note">
+        <p style="margin:0">Dear class,</p>
+        <p>It has been an absolute pleasure to interact with you over the last few months and to engage in deep discussions about the CFO office, finance, economics, markets and life in general.</p>
+        <p>As we complete this programme, I wish you the very best for your future endeavours. I would love to remain in touch and to hear about something interesting, amazing or disruptive you start to work on.</p>
+        <div class="sig">Lalit M. Fulara</div>
+      </div>
+      <a class="li-btn" href="https://www.linkedin.com/in/lalit-m-fulara-cfa-llb" target="_blank" rel="noopener"><span class="li-in" aria-hidden="true">in</span>Connect with me on LinkedIn</a>
+    </div>
+    <div class="card">
+      <h3>Your thoughts</h3>
+      <p class="small muted" style="margin:0">Every question is optional. Write as much or as little as you like. Only I will see your answers.</p>
+      <form class="fb" id="fbForm" action="#" method="POST" target="fbSink">
+        <label for="f1">What will you do differently in the CFO office after this programme?</label><textarea id="f1" data-k="q1"></textarea>
+        <label for="f2">Any idea that changed how you think, and why?</label><textarea id="f2" data-k="q2"></textarea>
+        <label for="f3">What did I miss, or what should I do differently in the next class?</label><textarea id="f3" data-k="q3"></textarea>
+        <label for="f4">Anything else you want to tell me?</label><textarea id="f4" data-k="q4"></textarea>
+        <div class="row2">
+          <div><label for="f5">Your name <small>optional</small></label><input id="f5" data-k="name" autocomplete="name"></div>
+          <div><label for="f6">Your LinkedIn profile <small>optional, so I can connect</small></label><input id="f6" data-k="linkedin" placeholder="linkedin.com/in/..."></div>
+        </div>
+        <button class="btn primary" type="submit" style="margin-top:16px">Send to Lalit</button>
+        <div class="sent" id="fbSent">Thank you. Your note has reached me.</div>
+        <p class="small" id="fbOff" style="display:none;color:var(--bad)">The form is not connected yet.</p>
+      </form>
+      <iframe name="fbSink" style="display:none" title="form sink"></iframe>
+    </div>
+  </div>
+  <div class="take"><b>Takeaway</b>The programme ends. The conversation does not.</div>
+</section>
+
+<div class="navrow" id="navrow"><button class="btn" id="prevBtn">Back</button><button class="btn primary" id="nextBtn">Next</button></div>
+</main>
+<div class="wrap foot">Prepared for the ISB CFO Programme. For teaching use. Not investment advice.</div>
+
+<script>
+const DATA = {"macro":[{"month":"2018-01","cpi_yoy":2.15,"core_cpi_yoy":1.89,"unemployment":4.0,"fed_funds":1.41,"breakeven_10y":2.04,"term_premium_10y":0.2,"y3m":1.43,"y2":2.02,"y10":2.58,"y30":2.87},{"month":"2018-02","cpi_yoy":2.26,"core_cpi_yoy":1.88,"unemployment":4.1,"fed_funds":1.42,"breakeven_10y":2.1,"term_premium_10y":0.32,"y3m":1.59,"y2":2.17,"y10":2.86,"y30":3.12},{"month":"2018-03","cpi_yoy":2.33,"core_cpi_yoy":2.12,"unemployment":4.0,"fed_funds":1.51,"breakeven_10y":2.09,"term_premium_10y":0.29,"y3m":1.73,"y2":2.27,"y10":2.84,"y30":3.1},{"month":"2018-04","cpi_yoy":2.47,"core_cpi_yoy":2.15,"unemployment":4.0,"fed_funds":1.69,"breakeven_10y":2.13,"term_premium_10y":0.29,"y3m":1.78,"y2":2.37,"y10":2.87,"y30":3.07},{"month":"2018-05","cpi_yoy":2.78,"core_cpi_yoy":2.27,"unemployment":3.8,"fed_funds":1.7,"breakeven_10y":2.14,"term_premium_10y":0.33,"y3m":1.89,"y2":2.52,"y10":2.98,"y30":3.14},{"month":"2018-06","cpi_yoy":2.81,"core_cpi_yoy":2.25,"unemployment":4.0,"fed_funds":1.82,"breakeven_10y":2.12,"term_premium_10y":0.29,"y3m":1.93,"y2":2.53,"y10":2.91,"y30":3.05},{"month":"2018-07","cpi_yoy":2.85,"core_cpi_yoy":2.27,"unemployment":3.8,"fed_funds":1.91,"breakeven_10y":2.11,"term_premium_10y":0.27,"y3m":1.98,"y2":2.6,"y10":2.89,"y30":3.0},{"month":"2018-08","cpi_yoy":2.64,"core_cpi_yoy":2.12,"unemployment":3.8,"fed_funds":1.91,"breakeven_10y":2.1,"term_premium_10y":0.25,"y3m":2.07,"y2":2.64,"y10":2.89,"y30":3.04},{"month":"2018-09","cpi_yoy":2.33,"core_cpi_yoy":2.2,"unemployment":3.7,"fed_funds":1.95,"breakeven_10y":2.12,"term_premium_10y":0.29,"y3m":2.16,"y2":2.76,"y10":3.0,"y30":3.14},{"month":"2018-10","cpi_yoy":2.49,"core_cpi_yoy":2.13,"unemployment":3.8,"fed_funds":2.19,"breakeven_10y":2.11,"term_premium_10y":0.34,"y3m":2.28,"y2":2.86,"y10":3.16,"y30":3.34},{"month":"2018-11","cpi_yoy":2.15,"core_cpi_yoy":2.22,"unemployment":3.8,"fed_funds":2.2,"breakeven_10y":2.0,"term_premium_10y":0.3,"y3m":2.37,"y2":2.86,"y10":3.12,"y30":3.37},{"month":"2018-12","cpi_yoy":2.0,"core_cpi_yoy":2.25,"unemployment":3.9,"fed_funds":2.27,"breakeven_10y":1.82,"term_premium_10y":0.13,"y3m":2.4,"y2":2.7,"y10":2.83,"y30":3.11},{"month":"2019-01","cpi_yoy":1.49,"core_cpi_yoy":2.18,"unemployment":4.0,"fed_funds":2.4,"breakeven_10y":1.79,"term_premium_10y":0.05,"y3m":2.41,"y2":2.55,"y10":2.71,"y30":3.03},{"month":"2019-02","cpi_yoy":1.52,"core_cpi_yoy":2.14,"unemployment":3.8,"fed_funds":2.4,"breakeven_10y":1.88,"term_premium_10y":0.03,"y3m":2.43,"y2":2.51,"y10":2.67,"y30":3.02},{"month":"2019-03","cpi_yoy":1.88,"core_cpi_yoy":2.07,"unemployment":3.8,"fed_funds":2.41,"breakeven_10y":1.91,"term_premium_10y":-0.02,"y3m":2.45,"y2":2.41,"y10":2.57,"y30":2.98},{"month":"2019-04","cpi_yoy":2.0,"core_cpi_yoy":2.09,"unemployment":3.7,"fed_funds":2.42,"breakeven_10y":1.94,"term_premium_10y":-0.04,"y3m":2.42,"y2":2.35,"y10":2.53,"y30":2.94},{"month":"2019-05","cpi_yoy":1.8,"core_cpi_yoy":1.97,"unemployment":3.6,"fed_funds":2.39,"breakeven_10y":1.83,"term_premium_10y":-0.11,"y3m":2.39,"y2":2.21,"y10":2.39,"y30":2.82},{"month":"2019-06","cpi_yoy":1.67,"core_cpi_yoy":2.07,"unemployment":3.6,"fed_funds":2.38,"breakeven_10y":1.7,"term_premium_10y":-0.25,"y3m":2.21,"y2":1.83,"y10":2.07,"y30":2.58},{"month":"2019-07","cpi_yoy":1.83,"core_cpi_yoy":2.17,"unemployment":3.7,"fed_funds":2.4,"breakeven_10y":1.75,"term_premium_10y":-0.24,"y3m":2.14,"y2":1.84,"y10":2.06,"y30":2.57},{"month":"2019-08","cpi_yoy":1.74,"core_cpi_yoy":2.32,"unemployment":3.6,"fed_funds":2.13,"breakeven_10y":1.59,"term_premium_10y":-0.42,"y3m":1.99,"y2":1.58,"y10":1.63,"y30":2.12},{"month":"2019-09","cpi_yoy":1.68,"core_cpi_yoy":2.33,"unemployment":3.5,"fed_funds":2.04,"breakeven_10y":1.59,"term_premium_10y":-0.37,"y3m":1.93,"y2":1.65,"y10":1.7,"y30":2.16},{"month":"2019-10","cpi_yoy":1.73,"core_cpi_yoy":2.34,"unemployment":3.6,"fed_funds":1.83,"breakeven_10y":1.56,"term_premium_10y":-0.33,"y3m":1.69,"y2":1.55,"y10":1.7,"y30":2.19},{"month":"2019-11","cpi_yoy":2.09,"core_cpi_yoy":2.35,"unemployment":3.6,"fed_funds":1.55,"breakeven_10y":1.64,"term_premium_10y":-0.24,"y3m":1.57,"y2":1.62,"y10":1.81,"y30":2.28},{"month":"2019-12","cpi_yoy":2.32,"core_cpi_yoy":2.29,"unemployment":3.6,"fed_funds":1.55,"breakeven_10y":1.72,"term_premium_10y":-0.21,"y3m":1.56,"y2":1.61,"y10":1.86,"y30":2.3},{"month":"2020-01","cpi_yoy":2.6,"core_cpi_yoy":2.28,"unemployment":3.6,"fed_funds":1.55,"breakeven_10y":1.72,"term_premium_10y":-0.27,"y3m":1.55,"y2":1.52,"y10":1.75,"y30":2.22},{"month":"2020-02","cpi_yoy":2.34,"core_cpi_yoy":2.37,"unemployment":3.5,"fed_funds":1.58,"breakeven_10y":1.62,"term_premium_10y":-0.4,"y3m":1.55,"y2":1.34,"y10":1.51,"y30":1.98},{"month":"2020-03","cpi_yoy":1.49,"core_cpi_yoy":2.1,"unemployment":4.4,"fed_funds":0.65,"breakeven_10y":0.99,"term_premium_10y":-0.47,"y3m":0.32,"y2":0.46,"y10":0.88,"y30":1.46},{"month":"2020-04","cpi_yoy":0.31,"core_cpi_yoy":1.43,"unemployment":14.8,"fed_funds":0.05,"breakeven_10y":1.1,"term_premium_10y":-0.56,"y3m":0.14,"y2":0.22,"y10":0.65,"y30":1.27},{"month":"2020-05","cpi_yoy":0.2,"core_cpi_yoy":1.22,"unemployment":13.2,"fed_funds":0.05,"breakeven_10y":1.12,"term_premium_10y":-0.57,"y3m":0.13,"y2":0.17,"y10":0.67,"y30":1.38},{"month":"2020-06","cpi_yoy":0.72,"core_cpi_yoy":1.18,"unemployment":11.0,"fed_funds":0.08,"breakeven_10y":1.27,"term_premium_10y":-0.57,"y3m":0.16,"y2":0.19,"y10":0.73,"y30":1.49},{"month":"2020-07","cpi_yoy":1.0,"core_cpi_yoy":1.56,"unemployment":10.2,"fed_funds":0.09,"breakeven_10y":1.46,"term_premium_10y":-0.61,"y3m":0.13,"y2":0.15,"y10":0.62,"y30":1.31},{"month":"2020-08","cpi_yoy":1.28,"core_cpi_yoy":1.72,"unemployment":8.4,"fed_funds":0.1,"breakeven_10y":1.66,"term_premium_10y":-0.61,"y3m":0.1,"y2":0.14,"y10":0.65,"y30":1.36},{"month":"2020-09","cpi_yoy":1.39,"core_cpi_yoy":1.72,"unemployment":7.8,"fed_funds":0.09,"breakeven_10y":1.66,"term_premium_10y":-0.6,"y3m":0.1,"y2":0.14,"y10":0.68,"y30":1.43},{"month":"2020-10","cpi_yoy":1.23,"core_cpi_yoy":1.64,"unemployment":6.9,"fed_funds":0.09,"breakeven_10y":1.7,"term_premium_10y":-0.55,"y3m":0.1,"y2":0.15,"y10":0.78,"y30":1.57},{"month":"2020-11","cpi_yoy":1.18,"core_cpi_yoy":1.67,"unemployment":6.7,"fed_funds":0.09,"breakeven_10y":1.71,"term_premium_10y":-0.5,"y3m":0.09,"y2":0.17,"y10":0.87,"y30":1.62},{"month":"2020-12","cpi_yoy":1.32,"core_cpi_yoy":1.62,"unemployment":6.7,"fed_funds":0.09,"breakeven_10y":1.92,"term_premium_10y":-0.48,"y3m":0.08,"y2":0.13,"y10":0.93,"y30":1.67},{"month":"2021-01","cpi_yoy":1.37,"core_cpi_yoy":1.38,"unemployment":6.4,"fed_funds":0.09,"breakeven_10y":2.08,"term_premium_10y":-0.41,"y3m":0.08,"y2":0.13,"y10":1.06,"y30":1.81},{"month":"2021-02","cpi_yoy":1.67,"core_cpi_yoy":1.28,"unemployment":6.2,"fed_funds":0.08,"breakeven_10y":2.18,"term_premium_10y":-0.32,"y3m":0.04,"y2":0.12,"y10":1.25,"y30":2.04},{"month":"2021-03","cpi_yoy":2.67,"core_cpi_yoy":1.65,"unemployment":6.1,"fed_funds":0.07,"breakeven_10y":2.28,"term_premium_10y":-0.11,"y3m":0.03,"y2":0.15,"y10":1.61,"y30":2.34},{"month":"2021-04","cpi_yoy":4.13,"core_cpi_yoy":2.98,"unemployment":6.1,"fed_funds":0.07,"breakeven_10y":2.35,"term_premium_10y":-0.08,"y3m":0.02,"y2":0.16,"y10":1.62,"y30":2.3},{"month":"2021-05","cpi_yoy":4.92,"core_cpi_yoy":3.79,"unemployment":5.8,"fed_funds":0.06,"breakeven_10y":2.47,"term_premium_10y":-0.1,"y3m":0.02,"y2":0.15,"y10":1.61,"y30":2.31},{"month":"2021-06","cpi_yoy":5.3,"core_cpi_yoy":4.44,"unemployment":5.9,"fed_funds":0.08,"breakeven_10y":2.34,"term_premium_10y":-0.13,"y3m":0.03,"y2":0.2,"y10":1.51,"y30":2.16},{"month":"2021-07","cpi_yoy":5.25,"core_cpi_yoy":4.21,"unemployment":5.4,"fed_funds":0.1,"breakeven_10y":2.33,"term_premium_10y":-0.23,"y3m":0.05,"y2":0.22,"y10":1.31,"y30":1.95},{"month":"2021-08","cpi_yoy":5.15,"core_cpi_yoy":3.94,"unemployment":5.1,"fed_funds":0.09,"breakeven_10y":2.35,"term_premium_10y":-0.24,"y3m":0.05,"y2":0.21,"y10":1.28,"y30":1.92},{"month":"2021-09","cpi_yoy":5.35,"core_cpi_yoy":4.0,"unemployment":4.7,"fed_funds":0.08,"breakeven_10y":2.34,"term_premium_10y":-0.19,"y3m":0.04,"y2":0.23,"y10":1.37,"y30":1.93},{"month":"2021-10","cpi_yoy":6.24,"core_cpi_yoy":4.59,"unemployment":4.5,"fed_funds":0.08,"breakeven_10y":2.54,"term_premium_10y":-0.06,"y3m":0.05,"y2":0.38,"y10":1.58,"y30":2.07},{"month":"2021-11","cpi_yoy":6.9,"core_cpi_yoy":4.97,"unemployment":4.1,"fed_funds":0.08,"breakeven_10y":2.62,"term_premium_10y":-0.04,"y3m":0.05,"y2":0.51,"y10":1.56,"y30":1.93},{"month":"2021-12","cpi_yoy":7.17,"core_cpi_yoy":5.49,"unemployment":3.9,"fed_funds":0.08,"breakeven_10y":2.46,"term_premium_10y":-0.08,"y3m":0.06,"y2":0.67,"y10":1.46,"y30":1.85},{"month":"2022-01","cpi_yoy":7.56,"core_cpi_yoy":6.05,"unemployment":4.0,"fed_funds":0.08,"breakeven_10y":2.45,"term_premium_10y":0.07,"y3m":0.14,"y2":0.98,"y10":1.77,"y30":2.1},{"month":"2022-02","cpi_yoy":7.94,"core_cpi_yoy":6.46,"unemployment":3.9,"fed_funds":0.08,"breakeven_10y":2.46,"term_premium_10y":0.13,"y3m":0.32,"y2":1.44,"y10":1.93,"y30":2.25},{"month":"2022-03","cpi_yoy":8.57,"core_cpi_yoy":6.48,"unemployment":3.7,"fed_funds":0.2,"breakeven_10y":2.85,"term_premium_10y":0.21,"y3m":0.44,"y2":1.9,"y10":2.13,"y30":2.4},{"month":"2022-04","cpi_yoy":8.23,"core_cpi_yoy":6.16,"unemployment":3.7,"fed_funds":0.33,"breakeven_10y":2.88,"term_premium_10y":0.48,"y3m":0.76,"y2":2.53,"y10":2.75,"y30":2.81},{"month":"2022-05","cpi_yoy":8.54,"core_cpi_yoy":6.03,"unemployment":3.6,"fed_funds":0.77,"breakeven_10y":2.69,"term_premium_10y":0.51,"y3m":0.98,"y2":2.61,"y10":2.9,"y30":3.06},{"month":"2022-06","cpi_yoy":8.98,"core_cpi_yoy":5.91,"unemployment":3.6,"fed_funds":1.21,"breakeven_10y":2.62,"term_premium_10y":0.53,"y3m":1.51,"y2":3.01,"y10":3.14,"y30":3.23},{"month":"2022-07","cpi_yoy":8.46,"core_cpi_yoy":5.9,"unemployment":3.5,"fed_funds":1.68,"breakeven_10y":2.36,"term_premium_10y":0.23,"y3m":2.23,"y2":3.04,"y10":2.9,"y30":3.1},{"month":"2022-08","cpi_yoy":8.22,"core_cpi_yoy":6.29,"unemployment":3.6,"fed_funds":2.33,"breakeven_10y":2.51,"term_premium_10y":0.14,"y3m":2.67,"y2":3.26,"y10":2.9,"y30":3.13},{"month":"2022-09","cpi_yoy":8.19,"core_cpi_yoy":6.62,"unemployment":3.5,"fed_funds":2.56,"breakeven_10y":2.38,"term_premium_10y":0.38,"y3m":3.17,"y2":3.85,"y10":3.51,"y30":3.55},{"month":"2022-10","cpi_yoy":7.76,"core_cpi_yoy":6.29,"unemployment":3.6,"fed_funds":3.08,"breakeven_10y":2.39,"term_premium_10y":0.52,"y3m":3.75,"y2":4.38,"y10":3.98,"y30":4.02},{"month":"2022-11","cpi_yoy":7.12,"core_cpi_yoy":5.97,"unemployment":3.6,"fed_funds":3.78,"breakeven_10y":2.37,"term_premium_10y":0.37,"y3m":4.23,"y2":4.5,"y10":3.87,"y30":3.98},{"month":"2022-12","cpi_yoy":6.4,"core_cpi_yoy":5.69,"unemployment":3.5,"fed_funds":4.1,"breakeven_10y":2.26,"term_premium_10y":0.15,"y3m":4.33,"y2":4.3,"y10":3.62,"y30":3.66},{"month":"2023-01","cpi_yoy":6.33,"core_cpi_yoy":5.54,"unemployment":3.5,"fed_funds":4.33,"breakeven_10y":2.24,"term_premium_10y":0.05,"y3m":4.62,"y2":4.23,"y10":3.55,"y30":3.68},{"month":"2023-02","cpi_yoy":5.96,"core_cpi_yoy":5.5,"unemployment":3.6,"fed_funds":4.57,"breakeven_10y":2.33,"term_premium_10y":0.15,"y3m":4.76,"y2":4.56,"y10":3.75,"y30":3.8},{"month":"2023-03","cpi_yoy":4.92,"core_cpi_yoy":5.57,"unemployment":3.5,"fed_funds":4.65,"breakeven_10y":2.3,"term_premium_10y":0.12,"y3m":4.8,"y2":4.32,"y10":3.67,"y30":3.77},{"month":"2023-04","cpi_yoy":4.95,"core_cpi_yoy":5.51,"unemployment":3.4,"fed_funds":4.83,"breakeven_10y":2.27,"term_premium_10y":-0.05,"y3m":5.04,"y2":4.03,"y10":3.46,"y30":3.69},{"month":"2023-05","cpi_yoy":4.13,"core_cpi_yoy":5.34,"unemployment":3.6,"fed_funds":5.06,"breakeven_10y":2.21,"term_premium_10y":-0.05,"y3m":5.27,"y2":4.17,"y10":3.58,"y30":3.86},{"month":"2023-06","cpi_yoy":3.07,"core_cpi_yoy":4.85,"unemployment":3.6,"fed_funds":5.08,"breakeven_10y":2.2,"term_premium_10y":0.05,"y3m":5.3,"y2":4.66,"y10":3.75,"y30":3.86},{"month":"2023-07","cpi_yoy":3.29,"core_cpi_yoy":4.7,"unemployment":3.5,"fed_funds":5.12,"breakeven_10y":2.3,"term_premium_10y":0.11,"y3m":5.4,"y2":4.86,"y10":3.9,"y30":3.95},{"month":"2023-08","cpi_yoy":3.72,"core_cpi_yoy":4.4,"unemployment":3.7,"fed_funds":5.33,"breakeven_10y":2.34,"term_premium_10y":0.24,"y3m":5.45,"y2":4.92,"y10":4.17,"y30":4.28},{"month":"2023-09","cpi_yoy":3.69,"core_cpi_yoy":4.13,"unemployment":3.7,"fed_funds":5.33,"breakeven_10y":2.34,"term_premium_10y":0.35,"y3m":5.47,"y2":5.04,"y10":4.37,"y30":4.46},{"month":"2023-10","cpi_yoy":3.25,"core_cpi_yoy":4.03,"unemployment":3.9,"fed_funds":5.33,"breakeven_10y":2.39,"term_premium_10y":0.58,"y3m":5.49,"y2":5.08,"y10":4.79,"y30":4.94},{"month":"2023-11","cpi_yoy":3.13,"core_cpi_yoy":4.02,"unemployment":3.7,"fed_funds":5.33,"breakeven_10y":2.3,"term_premium_10y":0.44,"y3m":5.42,"y2":4.9,"y10":4.49,"y30":4.65},{"month":"2023-12","cpi_yoy":3.32,"core_cpi_yoy":3.92,"unemployment":3.8,"fed_funds":5.33,"breakeven_10y":2.18,"term_premium_10y":0.18,"y3m":5.39,"y2":4.47,"y10":4.02,"y30":4.15},{"month":"2024-01","cpi_yoy":3.09,"core_cpi_yoy":3.86,"unemployment":3.7,"fed_funds":5.33,"breakeven_10y":2.27,"term_premium_10y":0.19,"y3m":5.38,"y2":4.33,"y10":4.05,"y30":4.25},{"month":"2024-02","cpi_yoy":3.16,"core_cpi_yoy":3.76,"unemployment":3.9,"fed_funds":5.33,"breakeven_10y":2.28,"term_premium_10y":0.28,"y3m":5.39,"y2":4.56,"y10":4.21,"y30":4.38},{"month":"2024-03","cpi_yoy":3.49,"core_cpi_yoy":3.82,"unemployment":3.9,"fed_funds":5.33,"breakeven_10y":2.31,"term_premium_10y":0.27,"y3m":5.38,"y2":4.61,"y10":4.21,"y30":4.36},{"month":"2024-04","cpi_yoy":3.36,"core_cpi_yoy":3.63,"unemployment":3.9,"fed_funds":5.33,"breakeven_10y":2.39,"term_premium_10y":0.45,"y3m":5.38,"y2":4.89,"y10":4.54,"y30":4.66},{"month":"2024-05","cpi_yoy":3.24,"core_cpi_yoy":3.39,"unemployment":3.9,"fed_funds":5.33,"breakeven_10y":2.33,"term_premium_10y":0.42,"y3m":5.39,"y2":4.87,"y10":4.48,"y30":4.62},{"month":"2024-06","cpi_yoy":2.97,"core_cpi_yoy":3.27,"unemployment":4.1,"fed_funds":5.33,"breakeven_10y":2.26,"term_premium_10y":0.32,"y3m":5.38,"y2":4.76,"y10":4.31,"y30":4.45},{"month":"2024-07","cpi_yoy":2.94,"core_cpi_yoy":3.23,"unemployment":4.2,"fed_funds":5.33,"breakeven_10y":2.27,"term_premium_10y":0.29,"y3m":5.34,"y2":4.51,"y10":4.24,"y30":4.46},{"month":"2024-08","cpi_yoy":2.61,"core_cpi_yoy":3.29,"unemployment":4.2,"fed_funds":5.33,"breakeven_10y":2.11,"term_premium_10y":0.12,"y3m":5.18,"y2":3.98,"y10":3.87,"y30":4.15},{"month":"2024-09","cpi_yoy":2.43,"core_cpi_yoy":3.28,"unemployment":4.1,"fed_funds":5.13,"breakeven_10y":2.11,"term_premium_10y":0.1,"y3m":4.85,"y2":3.63,"y10":3.72,"y30":4.04},{"month":"2024-10","cpi_yoy":2.58,"core_cpi_yoy":3.3,"unemployment":4.1,"fed_funds":4.83,"breakeven_10y":2.29,"term_premium_10y":0.36,"y3m":4.63,"y2":3.98,"y10":4.09,"y30":4.38},{"month":"2024-11","cpi_yoy":2.72,"core_cpi_yoy":3.29,"unemployment":4.2,"fed_funds":4.64,"breakeven_10y":2.32,"term_premium_10y":0.54,"y3m":4.53,"y2":4.27,"y10":4.36,"y30":4.54},{"month":"2024-12","cpi_yoy":2.87,"core_cpi_yoy":3.21,"unemployment":4.1,"fed_funds":4.48,"breakeven_10y":2.3,"term_premium_10y":0.58,"y3m":4.37,"y2":4.23,"y10":4.39,"y30":4.58},{"month":"2025-01","cpi_yoy":2.99,"core_cpi_yoy":3.28,"unemployment":4.0,"fed_funds":4.33,"breakeven_10y":2.4,"term_premium_10y":0.72,"y3m":4.31,"y2":4.27,"y10":4.63,"y30":4.85},{"month":"2025-02","cpi_yoy":2.8,"core_cpi_yoy":3.14,"unemployment":4.2,"fed_funds":4.33,"breakeven_10y":2.42,"term_premium_10y":0.62,"y3m":4.32,"y2":4.22,"y10":4.45,"y30":4.68},{"month":"2025-03","cpi_yoy":2.38,"core_cpi_yoy":2.81,"unemployment":4.2,"fed_funds":4.33,"breakeven_10y":2.33,"term_premium_10y":0.53,"y3m":4.3,"y2":3.98,"y10":4.28,"y30":4.6},{"month":"2025-04","cpi_yoy":2.33,"core_cpi_yoy":2.78,"unemployment":4.2,"fed_funds":4.33,"breakeven_10y":2.24,"term_premium_10y":0.51,"y3m":4.31,"y2":3.79,"y10":4.27,"y30":4.72},{"month":"2025-05","cpi_yoy":2.38,"core_cpi_yoy":2.77,"unemployment":4.3,"fed_funds":4.33,"breakeven_10y":2.31,"term_premium_10y":0.57,"y3m":4.35,"y2":3.93,"y10":4.42,"y30":4.9},{"month":"2025-06","cpi_yoy":2.68,"core_cpi_yoy":2.91,"unemployment":4.1,"fed_funds":4.33,"breakeven_10y":2.3,"term_premium_10y":0.54,"y3m":4.34,"y2":3.9,"y10":4.38,"y30":4.89},{"month":"2025-07","cpi_yoy":2.74,"core_cpi_yoy":3.05,"unemployment":4.3,"fed_funds":4.33,"breakeven_10y":2.38,"term_premium_10y":0.53,"y3m":4.35,"y2":3.89,"y10":4.38,"y30":4.92},{"month":"2025-08","cpi_yoy":2.94,"core_cpi_yoy":3.11,"unemployment":4.3,"fed_funds":4.33,"breakeven_10y":2.38,"term_premium_10y":0.49,"y3m":4.22,"y2":3.71,"y10":4.26,"y30":4.87},{"month":"2025-09","cpi_yoy":3.02,"core_cpi_yoy":3.02,"unemployment":4.4,"fed_funds":4.22,"breakeven_10y":2.37,"term_premium_10y":0.46,"y3m":4.01,"y2":3.58,"y10":4.12,"y30":4.74},{"month":"2025-10","cpi_yoy":null,"core_cpi_yoy":null,"unemployment":null,"fed_funds":4.09,"breakeven_10y":2.31,"term_premium_10y":0.46,"y3m":3.91,"y2":3.52,"y10":4.05,"y30":4.63},{"month":"2025-11","cpi_yoy":2.7,"core_cpi_yoy":2.6,"unemployment":4.5,"fed_funds":3.88,"breakeven_10y":2.27,"term_premium_10y":0.48,"y3m":3.86,"y2":3.56,"y10":4.09,"y30":4.7},{"month":"2025-12","cpi_yoy":2.65,"core_cpi_yoy":2.65,"unemployment":4.4,"fed_funds":3.72,"breakeven_10y":2.24,"term_premium_10y":0.55,"y3m":3.67,"y2":3.51,"y10":4.14,"y30":4.8},{"month":"2026-01","cpi_yoy":2.39,"core_cpi_yoy":2.51,"unemployment":4.3,"fed_funds":3.64,"breakeven_10y":2.31,"term_premium_10y":0.6,"y3m":3.64,"y2":3.54,"y10":4.21,"y30":4.84},{"month":"2026-02","cpi_yoy":2.43,"core_cpi_yoy":2.47,"unemployment":4.4,"fed_funds":3.64,"breakeven_10y":2.3,"term_premium_10y":0.55,"y3m":3.68,"y2":3.48,"y10":4.12,"y30":4.76},{"month":"2026-03","cpi_yoy":3.29,"core_cpi_yoy":2.6,"unemployment":4.3,"fed_funds":3.64,"breakeven_10y":2.34,"term_premium_10y":0.61,"y3m":3.69,"y2":3.72,"y10":4.24,"y30":4.85},{"month":"2026-04","cpi_yoy":3.78,"core_cpi_yoy":2.74,"unemployment":4.3,"fed_funds":3.64,"breakeven_10y":2.38,"term_premium_10y":0.65,"y3m":3.69,"y2":3.8,"y10":4.31,"y30":4.91},{"month":"2026-05","cpi_yoy":4.17,"core_cpi_yoy":2.82,"unemployment":4.3,"fed_funds":3.63,"breakeven_10y":2.45,"term_premium_10y":0.77,"y3m":3.68,"y2":4.0,"y10":4.48,"y30":5.03},{"month":"2026-06","cpi_yoy":3.46,"core_cpi_yoy":2.57,"unemployment":4.2,"fed_funds":3.63,"breakeven_10y":2.29,"term_premium_10y":0.75,"y3m":3.74,"y2":4.12,"y10":4.47,"y30":4.95},{"month":"2026-07","cpi_yoy":3.3,"core_cpi_yoy":2.47,"unemployment":4.1,"fed_funds":3.63,"breakeven_10y":2.25,"term_premium_10y":0.79,"y3m":3.81,"y2":4.23,"y10":4.6,"y30":5.1},{"month":"2026-08","cpi_yoy":3.35,"core_cpi_yoy":2.45,"unemployment":4.1,"fed_funds":3.63,"breakeven_10y":2.29,"term_premium_10y":0.85,"y3m":3.8,"y2":4.22,"y10":4.68,"y30":5.23},{"month":"2026-09","cpi_yoy":null,"core_cpi_yoy":null,"unemployment":4.2,"fed_funds":3.75,"breakeven_10y":2.35,"term_premium_10y":0.96,"y3m":4.03,"y2":4.66,"y10":4.99,"y30":5.37}],"annual":[{"year":2000,"y3m":5.82,"y10":6.03},{"year":2001,"y3m":3.39,"y10":5.0},{"year":2002,"y3m":1.6,"y10":4.6},{"year":2003,"y3m":1.01,"y10":3.99},{"year":2004,"y3m":1.38,"y10":4.26},{"year":2005,"y3m":3.15,"y10":4.28},{"year":2006,"y3m":4.73,"y10":4.79},{"year":2007,"y3m":4.35,"y10":4.63},{"year":2008,"y3m":1.36,"y10":3.65},{"year":2009,"y3m":0.15,"y10":3.24},{"year":2010,"y3m":0.14,"y10":3.2},{"year":2011,"y3m":0.05,"y10":2.77},{"year":2012,"y3m":0.09,"y10":1.79},{"year":2013,"y3m":0.06,"y10":2.36},{"year":2014,"y3m":0.03,"y10":2.53},{"year":2015,"y3m":0.05,"y10":2.13},{"year":2016,"y3m":0.32,"y10":1.84},{"year":2017,"y3m":0.95,"y10":2.33},{"year":2018,"y3m":1.97,"y10":2.91},{"year":2019,"y3m":2.1,"y10":2.14},{"year":2020,"y3m":0.36,"y10":0.89},{"year":2021,"y3m":0.04,"y10":1.44},{"year":2022,"y3m":2.05,"y10":2.95},{"year":2023,"y3m":5.2,"y10":3.96},{"year":2024,"y3m":5.1,"y10":4.21},{"year":2025,"y3m":4.16,"y10":4.29},{"year":2026,"y3m":3.77,"y10":4.49}],"curve":[{"date":"2026-02-27","3m":3.66,"2y":3.38,"5y":3.51,"10y":3.95,"30y":4.62},{"date":"2026-10-08","3m":4.15,"2y":4.76,"5y":4.99,"10y":5.24,"30y":5.61}],"daily":[{"d":"2025-12-01","y3m":3.78,"y10":4.09,"y30":4.74},{"d":"2025-12-02","y3m":3.77,"y10":4.09,"y30":4.75},{"d":"2025-12-03","y3m":3.72,"y10":4.06,"y30":4.73},{"d":"2025-12-04","y3m":3.71,"y10":4.1,"y30":4.76},{"d":"2025-12-05","y3m":3.71,"y10":4.14,"y30":4.79},{"d":"2025-12-08","y3m":3.7,"y10":4.17,"y30":4.81},{"d":"2025-12-09","y3m":3.73,"y10":4.19,"y30":4.81},{"d":"2025-12-10","y3m":3.68,"y10":4.16,"y30":4.79},{"d":"2025-12-11","y3m":3.66,"y10":4.15,"y30":4.8},{"d":"2025-12-12","y3m":3.62,"y10":4.19,"y30":4.85},{"d":"2025-12-15","y3m":3.63,"y10":4.18,"y30":4.85},{"d":"2025-12-16","y3m":3.63,"y10":4.15,"y30":4.82},{"d":"2025-12-17","y3m":3.63,"y10":4.15,"y30":4.83},{"d":"2025-12-18","y3m":3.61,"y10":4.12,"y30":4.81},{"d":"2025-12-19","y3m":3.61,"y10":4.15,"y30":4.83},{"d":"2025-12-22","y3m":3.62,"y10":4.16,"y30":4.84},{"d":"2025-12-23","y3m":3.64,"y10":4.17,"y30":4.82},{"d":"2025-12-24","y3m":3.65,"y10":4.14,"y30":4.8},{"d":"2025-12-26","y3m":3.63,"y10":4.13,"y30":4.82},{"d":"2025-12-29","y3m":3.63,"y10":4.11,"y30":4.8},{"d":"2025-12-30","y3m":3.63,"y10":4.13,"y30":4.81},{"d":"2025-12-31","y3m":3.64,"y10":4.16,"y30":4.84},{"d":"2026-01-02","y3m":3.62,"y10":4.2,"y30":4.87},{"d":"2026-01-05","y3m":3.6,"y10":4.16,"y30":4.84},{"d":"2026-01-06","y3m":3.61,"y10":4.17,"y30":4.86},{"d":"2026-01-07","y3m":3.6,"y10":4.15,"y30":4.83},{"d":"2026-01-08","y3m":3.6,"y10":4.17,"y30":4.84},{"d":"2026-01-09","y3m":3.6,"y10":4.17,"y30":4.81},{"d":"2026-01-12","y3m":3.62,"y10":4.18,"y30":4.84},{"d":"2026-01-13","y3m":3.65,"y10":4.18,"y30":4.83},{"d":"2026-01-14","y3m":3.65,"y10":4.14,"y30":4.79},{"d":"2026-01-15","y3m":3.65,"y10":4.17,"y30":4.8},{"d":"2026-01-16","y3m":3.64,"y10":4.23,"y30":4.84},{"d":"2026-01-20","y3m":3.66,"y10":4.3,"y30":4.92},{"d":"2026-01-21","y3m":3.68,"y10":4.25,"y30":4.86},{"d":"2026-01-22","y3m":3.68,"y10":4.25,"y30":4.84},{"d":"2026-01-23","y3m":3.67,"y10":4.23,"y30":4.83},{"d":"2026-01-26","y3m":3.67,"y10":4.21,"y30":4.8},{"d":"2026-01-27","y3m":3.66,"y10":4.24,"y30":4.86},{"d":"2026-01-28","y3m":3.68,"y10":4.25,"y30":4.86},{"d":"2026-01-29","y3m":3.67,"y10":4.23,"y30":4.86},{"d":"2026-01-30","y3m":3.66,"y10":4.24,"y30":4.87},{"d":"2026-02-02","y3m":3.67,"y10":4.28,"y30":4.92},{"d":"2026-02-03","y3m":3.68,"y10":4.27,"y30":4.9},{"d":"2026-02-04","y3m":3.69,"y10":4.28,"y30":4.92},{"d":"2026-02-05","y3m":3.67,"y10":4.19,"y30":4.84},{"d":"2026-02-06","y3m":3.68,"y10":4.21,"y30":4.85},{"d":"2026-02-09","y3m":3.69,"y10":4.2,"y30":4.85},{"d":"2026-02-10","y3m":3.68,"y10":4.14,"y30":4.78},{"d":"2026-02-11","y3m":3.69,"y10":4.17,"y30":4.81},{"d":"2026-02-12","y3m":3.69,"y10":4.1,"y30":4.74},{"d":"2026-02-13","y3m":3.68,"y10":4.05,"y30":4.69},{"d":"2026-02-17","y3m":3.68,"y10":4.06,"y30":4.69},{"d":"2026-02-18","y3m":3.69,"y10":4.08,"y30":4.71},{"d":"2026-02-19","y3m":3.69,"y10":4.07,"y30":4.7},{"d":"2026-02-20","y3m":3.69,"y10":4.09,"y30":4.73},{"d":"2026-02-23","y3m":3.68,"y10":4.03,"y30":4.7},{"d":"2026-02-24","y3m":3.68,"y10":4.04,"y30":4.69},{"d":"2026-02-25","y3m":3.68,"y10":4.06,"y30":4.7},{"d":"2026-02-26","y3m":3.68,"y10":4.01,"y30":4.66},{"d":"2026-02-27","y3m":3.66,"y10":3.95,"y30":4.62},{"d":"2026-03-02","y3m":3.68,"y10":4.04,"y30":4.68},{"d":"2026-03-03","y3m":3.68,"y10":4.07,"y30":4.71},{"d":"2026-03-04","y3m":3.69,"y10":4.1,"y30":4.73},{"d":"2026-03-05","y3m":3.68,"y10":4.14,"y30":4.75},{"d":"2026-03-06","y3m":3.67,"y10":4.14,"y30":4.76},{"d":"2026-03-09","y3m":3.68,"y10":4.1,"y30":4.72},{"d":"2026-03-10","y3m":3.68,"y10":4.16,"y30":4.79},{"d":"2026-03-11","y3m":3.69,"y10":4.23,"y30":4.88},{"d":"2026-03-12","y3m":3.7,"y10":4.26,"y30":4.88},{"d":"2026-03-13","y3m":3.69,"y10":4.28,"y30":4.91},{"d":"2026-03-16","y3m":3.69,"y10":4.22,"y30":4.87},{"d":"2026-03-17","y3m":3.69,"y10":4.2,"y30":4.84},{"d":"2026-03-18","y3m":3.71,"y10":4.26,"y30":4.88},{"d":"2026-03-19","y3m":3.7,"y10":4.25,"y30":4.84},{"d":"2026-03-20","y3m":3.71,"y10":4.38,"y30":4.95},{"d":"2026-03-23","y3m":3.7,"y10":4.35,"y30":4.92},{"d":"2026-03-24","y3m":3.71,"y10":4.37,"y30":4.93},{"d":"2026-03-25","y3m":3.71,"y10":4.33,"y30":4.9},{"d":"2026-03-26","y3m":3.72,"y10":4.41,"y30":4.93},{"d":"2026-03-27","y3m":3.69,"y10":4.43,"y30":4.96},{"d":"2026-03-30","y3m":3.69,"y10":4.35,"y30":4.91},{"d":"2026-03-31","y3m":3.69,"y10":4.32,"y30":4.91},{"d":"2026-04-01","y3m":3.7,"y10":4.32,"y30":4.9},{"d":"2026-04-02","y3m":3.7,"y10":4.31,"y30":4.88},{"d":"2026-04-06","y3m":3.72,"y10":4.34,"y30":4.89},{"d":"2026-04-07","y3m":3.7,"y10":4.3,"y30":4.88},{"d":"2026-04-08","y3m":3.69,"y10":4.3,"y30":4.89},{"d":"2026-04-09","y3m":3.68,"y10":4.28,"y30":4.89},{"d":"2026-04-10","y3m":3.69,"y10":4.32,"y30":4.91},{"d":"2026-04-13","y3m":3.69,"y10":4.29,"y30":4.9},{"d":"2026-04-14","y3m":3.7,"y10":4.25,"y30":4.86},{"d":"2026-04-15","y3m":3.7,"y10":4.28,"y30":4.89},{"d":"2026-04-16","y3m":3.7,"y10":4.32,"y30":4.93},{"d":"2026-04-17","y3m":3.69,"y10":4.25,"y30":4.88},{"d":"2026-04-20","y3m":3.68,"y10":4.26,"y30":4.89},{"d":"2026-04-21","y3m":3.69,"y10":4.3,"y30":4.91},{"d":"2026-04-22","y3m":3.68,"y10":4.3,"y30":4.91},{"d":"2026-04-23","y3m":3.68,"y10":4.32,"y30":4.91},{"d":"2026-04-24","y3m":3.68,"y10":4.31,"y30":4.91},{"d":"2026-04-27","y3m":3.68,"y10":4.34,"y30":4.94},{"d":"2026-04-28","y3m":3.68,"y10":4.35,"y30":4.94},{"d":"2026-04-29","y3m":3.68,"y10":4.43,"y30":5.0},{"d":"2026-04-30","y3m":3.67,"y10":4.37,"y30":4.97},{"d":"2026-05-01","y3m":3.66,"y10":4.37,"y30":4.96},{"d":"2026-05-04","y3m":3.68,"y10":4.43,"y30":5.01},{"d":"2026-05-05","y3m":3.69,"y10":4.43,"y30":4.99},{"d":"2026-05-06","y3m":3.69,"y10":4.35,"y30":4.94},{"d":"2026-05-07","y3m":3.69,"y10":4.38,"y30":4.96},{"d":"2026-05-08","y3m":3.69,"y10":4.36,"y30":4.94},{"d":"2026-05-11","y3m":3.69,"y10":4.41,"y30":4.98},{"d":"2026-05-12","y3m":3.69,"y10":4.46,"y30":5.03},{"d":"2026-05-13","y3m":3.69,"y10":4.47,"y30":5.03},{"d":"2026-05-14","y3m":3.68,"y10":4.48,"y30":5.03},{"d":"2026-05-15","y3m":3.68,"y10":4.6,"y30":5.12},{"d":"2026-05-18","y3m":3.65,"y10":4.58,"y30":5.12},{"d":"2026-05-19","y3m":3.66,"y10":4.67,"y30":5.18},{"d":"2026-05-20","y3m":3.65,"y10":4.58,"y30":5.12},{"d":"2026-05-21","y3m":3.67,"y10":4.57,"y30":5.1},{"d":"2026-05-22","y3m":3.67,"y10":4.56,"y30":5.06},{"d":"2026-05-26","y3m":3.67,"y10":4.49,"y30":5.02},{"d":"2026-05-27","y3m":3.67,"y10":4.48,"y30":5.01},{"d":"2026-05-28","y3m":3.68,"y10":4.45,"y30":4.98},{"d":"2026-05-29","y3m":3.68,"y10":4.44,"y30":4.97},{"d":"2026-06-01","y3m":3.7,"y10":4.45,"y30":4.97},{"d":"2026-06-02","y3m":3.71,"y10":4.45,"y30":4.96},{"d":"2026-06-03","y3m":3.72,"y10":4.49,"y30":4.99},{"d":"2026-06-04","y3m":3.71,"y10":4.47,"y30":4.98},{"d":"2026-06-05","y3m":3.72,"y10":4.53,"y30":5.0},{"d":"2026-06-08","y3m":3.72,"y10":4.57,"y30":5.04},{"d":"2026-06-09","y3m":3.73,"y10":4.52,"y30":5.0},{"d":"2026-06-10","y3m":3.72,"y10":4.55,"y30":5.03},{"d":"2026-06-11","y3m":3.71,"y10":4.46,"y30":4.95},{"d":"2026-06-12","y3m":3.71,"y10":4.48,"y30":4.97},{"d":"2026-06-15","y3m":3.71,"y10":4.47,"y30":4.97},{"d":"2026-06-16","y3m":3.72,"y10":4.44,"y30":4.94},{"d":"2026-06-17","y3m":3.76,"y10":4.49,"y30":4.93},{"d":"2026-06-18","y3m":3.75,"y10":4.46,"y30":4.9},{"d":"2026-06-22","y3m":3.77,"y10":4.51,"y30":4.94},{"d":"2026-06-23","y3m":3.78,"y10":4.5,"y30":4.95},{"d":"2026-06-24","y3m":3.78,"y10":4.4,"y30":4.85},{"d":"2026-06-25","y3m":3.77,"y10":4.39,"y30":4.86},{"d":"2026-06-26","y3m":3.75,"y10":4.38,"y30":4.87},{"d":"2026-06-29","y3m":3.77,"y10":4.38,"y30":4.86},{"d":"2026-06-30","y3m":3.83,"y10":4.46,"y30":4.95},{"d":"2026-07-01","y3m":3.79,"y10":4.48,"y30":4.97},{"d":"2026-07-02","y3m":3.76,"y10":4.49,"y30":4.99},{"d":"2026-07-06","y3m":3.78,"y10":4.47,"y30":4.99},{"d":"2026-07-07","y3m":3.82,"y10":4.55,"y30":5.06},{"d":"2026-07-08","y3m":3.82,"y10":4.58,"y30":5.08},{"d":"2026-07-09","y3m":3.78,"y10":4.55,"y30":5.06},{"d":"2026-07-10","y3m":3.79,"y10":4.56,"y30":5.06},{"d":"2026-07-13","y3m":3.83,"y10":4.62,"y30":5.11},{"d":"2026-07-14","y3m":3.79,"y10":4.59,"y30":5.1},{"d":"2026-07-15","y3m":3.79,"y10":4.55,"y30":5.08},{"d":"2026-07-16","y3m":3.79,"y10":4.56,"y30":5.09},{"d":"2026-07-17","y3m":3.8,"y10":4.55,"y30":5.07},{"d":"2026-07-20","y3m":3.8,"y10":4.59,"y30":5.12},{"d":"2026-07-21","y3m":3.82,"y10":4.63,"y30":5.13},{"d":"2026-07-22","y3m":3.84,"y10":4.66,"y30":5.15},{"d":"2026-07-23","y3m":3.9,"y10":4.7,"y30":5.16},{"d":"2026-07-24","y3m":3.91,"y10":4.68,"y30":5.16},{"d":"2026-07-27","y3m":3.9,"y10":4.65,"y30":5.13},{"d":"2026-07-28","y3m":3.86,"y10":4.61,"y30":5.09},{"d":"2026-07-29","y3m":3.78,"y10":4.69,"y30":5.21},{"d":"2026-07-30","y3m":3.77,"y10":4.67,"y30":5.21},{"d":"2026-07-31","y3m":3.77,"y10":4.72,"y30":5.27},{"d":"2026-08-03","y3m":3.78,"y10":4.68,"y30":5.23},{"d":"2026-08-04","y3m":3.82,"y10":4.62,"y30":5.17},{"d":"2026-08-05","y3m":3.82,"y10":4.62,"y30":5.17},{"d":"2026-08-06","y3m":3.83,"y10":4.68,"y30":5.22},{"d":"2026-08-07","y3m":3.8,"y10":4.65,"y30":5.2},{"d":"2026-08-10","y3m":3.81,"y10":4.7,"y30":5.25},{"d":"2026-08-11","y3m":3.82,"y10":4.69,"y30":5.25},{"d":"2026-08-12","y3m":3.8,"y10":4.69,"y30":5.25},{"d":"2026-08-13","y3m":3.81,"y10":4.65,"y30":5.22},{"d":"2026-08-14","y3m":3.79,"y10":4.69,"y30":5.26},{"d":"2026-08-17","y3m":3.79,"y10":4.73,"y30":5.31},{"d":"2026-08-18","y3m":3.8,"y10":4.71,"y30":5.29},{"d":"2026-08-19","y3m":3.79,"y10":4.64,"y30":5.19},{"d":"2026-08-20","y3m":3.8,"y10":4.71,"y30":5.25},{"d":"2026-08-21","y3m":3.81,"y10":4.74,"y30":5.28},{"d":"2026-08-24","y3m":3.8,"y10":4.7,"y30":5.23},{"d":"2026-08-25","y3m":3.79,"y10":4.62,"y30":5.16},{"d":"2026-08-26","y3m":3.78,"y10":4.65,"y30":5.17},{"d":"2026-08-27","y3m":3.78,"y10":4.68,"y30":5.2},{"d":"2026-08-28","y3m":3.82,"y10":4.73,"y30":5.21},{"d":"2026-08-31","y3m":3.84,"y10":4.75,"y30":5.25},{"d":"2026-09-01","y3m":3.87,"y10":4.8,"y30":5.27},{"d":"2026-09-02","y3m":3.86,"y10":4.78,"y30":5.26},{"d":"2026-09-03","y3m":3.84,"y10":4.77,"y30":5.25},{"d":"2026-09-04","y3m":3.86,"y10":4.78,"y30":5.24},{"d":"2026-09-08","y3m":3.87,"y10":4.79,"y30":5.25},{"d":"2026-09-09","y3m":3.9,"y10":4.84,"y30":5.29},{"d":"2026-09-10","y3m":3.95,"y10":4.96,"y30":5.37},{"d":"2026-09-11","y3m":4.01,"y10":4.97,"y30":5.36},{"d":"2026-09-14","y3m":4.05,"y10":5.0,"y30":5.35},{"d":"2026-09-15","y3m":4.06,"y10":5.01,"y30":5.37},{"d":"2026-09-16","y3m":4.07,"y10":5.02,"y30":5.36},{"d":"2026-09-17","y3m":4.07,"y10":4.94,"y30":5.29},{"d":"2026-09-18","y3m":4.08,"y10":5.0,"y30":5.33},{"d":"2026-09-21","y3m":4.08,"y10":4.95,"y30":5.28},{"d":"2026-09-22","y3m":4.11,"y10":4.96,"y30":5.3},{"d":"2026-09-23","y3m":4.14,"y10":5.11,"y30":5.4},{"d":"2026-09-24","y3m":4.18,"y10":5.21,"y30":5.49},{"d":"2026-09-25","y3m":4.18,"y10":5.17,"y30":5.49},{"d":"2026-09-28","y3m":4.16,"y10":5.24,"y30":5.55},{"d":"2026-09-29","y3m":4.17,"y10":5.23,"y30":5.57},{"d":"2026-09-30","y3m":4.13,"y10":5.29,"y30":5.63},{"d":"2026-10-01","y3m":4.09,"y10":5.24,"y30":5.61},{"d":"2026-10-02","y3m":4.1,"y10":5.28,"y30":5.62},{"d":"2026-10-05","y3m":4.12,"y10":5.31,"y30":5.66},{"d":"2026-10-06","y3m":4.14,"y10":5.29,"y30":5.66},{"d":"2026-10-07","y3m":4.14,"y10":5.29,"y30":5.67},{"d":"2026-10-08","y3m":4.15,"y10":5.24,"y30":5.61}],"markets":{"dxy":[{"m":"2025-12","v":98.3},{"m":"2026-01","v":97.1},{"m":"2026-02","v":97.6},{"m":"2026-03","v":99.6},{"m":"2026-04","v":98.2},{"m":"2026-05","v":99.2},{"m":"2026-06","v":101.4},{"m":"2026-07","v":99.8},{"m":"2026-08","v":99.7},{"m":"2026-09","v":102.0},{"m":"2026-10","v":102.1}],"us100":[{"m":"2025-12","v":25221.0},{"m":"2026-01","v":25520.6},{"m":"2026-02","v":24911.2},{"m":"2026-03","v":24004.7},{"m":"2026-04","v":27660.8},{"m":"2026-05","v":30467.8},{"m":"2026-06","v":29795.1},{"m":"2026-07","v":28166.1},{"m":"2026-08","v":29085.0},{"m":"2026-09","v":30493.7},{"m":"2026-10","v":30785.8}],"gold":[{"m":"2025-12","v":4318.8},{"m":"2026-01","v":4890.3},{"m":"2026-02","v":5279.0},{"m":"2026-03","v":4758.7},{"m":"2026-04","v":4614.3},{"m":"2026-05","v":4484.5},{"m":"2026-06","v":4031.1},{"m":"2026-07","v":4044.3},{"m":"2026-08","v":4328.1},{"m":"2026-09","v":4177.1},{"m":"2026-10","v":4133.4}],"asof":"2026-10-07"},"curveM":[{"m":"2000-01","y3m":5.32,"y10":6.66},{"m":"2000-02","y3m":5.55,"y10":6.54},{"m":"2000-03","y3m":5.69,"y10":6.26},{"m":"2000-04","y3m":5.66,"y10":5.99},{"m":"2000-05","y3m":5.79,"y10":6.43},{"m":"2000-06","y3m":5.69,"y10":6.11},{"m":"2000-07","y3m":5.95,"y10":6.04},{"m":"2000-08","y3m":6.09,"y10":5.84},{"m":"2000-09","y3m":6.0,"y10":5.79},{"m":"2000-10","y3m":6.11,"y10":5.74},{"m":"2000-11","y3m":6.17,"y10":5.72},{"m":"2000-12","y3m":5.77,"y10":5.25},{"m":"2001-01","y3m":5.15,"y10":5.14},{"m":"2001-02","y3m":4.88,"y10":5.12},{"m":"2001-03","y3m":4.42,"y10":4.88},{"m":"2001-04","y3m":3.87,"y10":5.12},{"m":"2001-05","y3m":3.62,"y10":5.37},{"m":"2001-06","y3m":3.49,"y10":5.27},{"m":"2001-07","y3m":3.52,"y10":5.23},{"m":"2001-08","y3m":3.36,"y10":4.98},{"m":"2001-09","y3m":2.69,"y10":4.75},{"m":"2001-10","y3m":2.16,"y10":4.56},{"m":"2001-11","y3m":1.87,"y10":4.59},{"m":"2001-12","y3m":1.69,"y10":5.02},{"m":"2002-01","y3m":1.66,"y10":5.0},{"m":"2002-02","y3m":1.72,"y10":4.92},{"m":"2002-03","y3m":1.79,"y10":5.25},{"m":"2002-04","y3m":1.71,"y10":5.22},{"m":"2002-05","y3m":1.73,"y10":5.14},{"m":"2002-06","y3m":1.7,"y10":4.9},{"m":"2002-07","y3m":1.68,"y10":4.63},{"m":"2002-08","y3m":1.62,"y10":4.26},{"m":"2002-09","y3m":1.63,"y10":3.9},{"m":"2002-10","y3m":1.58,"y10":3.91},{"m":"2002-11","y3m":1.23,"y10":4.02},{"m":"2002-12","y3m":1.19,"y10":4.04},{"m":"2003-01","y3m":1.17,"y10":4.02},{"m":"2003-02","y3m":1.16,"y10":3.9},{"m":"2003-03","y3m":1.13,"y10":3.79},{"m":"2003-04","y3m":1.13,"y10":3.93},{"m":"2003-05","y3m":1.07,"y10":3.55},{"m":"2003-06","y3m":0.92,"y10":3.32},{"m":"2003-07","y3m":0.9,"y10":3.9},{"m":"2003-08","y3m":0.95,"y10":4.41},{"m":"2003-09","y3m":0.94,"y10":4.3},{"m":"2003-10","y3m":0.92,"y10":4.25},{"m":"2003-11","y3m":0.93,"y10":4.29},{"m":"2003-12","y3m":0.9,"y10":4.26},{"m":"2004-01","y3m":0.89,"y10":4.14},{"m":"2004-02","y3m":0.93,"y10":4.08},{"m":"2004-03","y3m":0.94,"y10":3.82},{"m":"2004-04","y3m":0.94,"y10":4.28},{"m":"2004-05","y3m":1.02,"y10":4.69},{"m":"2004-06","y3m":1.27,"y10":4.72},{"m":"2004-07","y3m":1.33,"y10":4.5},{"m":"2004-08","y3m":1.48,"y10":4.31},{"m":"2004-09","y3m":1.65,"y10":4.12},{"m":"2004-10","y3m":1.76,"y10":4.08},{"m":"2004-11","y3m":2.07,"y10":4.17},{"m":"2004-12","y3m":2.19,"y10":4.23},{"m":"2005-01","y3m":2.33,"y10":4.22},{"m":"2005-02","y3m":2.54,"y10":4.15},{"m":"2005-03","y3m":2.74,"y10":4.49},{"m":"2005-04","y3m":2.78,"y10":4.35},{"m":"2005-05","y3m":2.84,"y10":4.14},{"m":"2005-06","y3m":2.97,"y10":3.99},{"m":"2005-07","y3m":3.22,"y10":4.15},{"m":"2005-08","y3m":3.44,"y10":4.26},{"m":"2005-09","y3m":3.42,"y10":4.18},{"m":"2005-10","y3m":3.71,"y10":4.45},{"m":"2005-11","y3m":3.88,"y10":4.54},{"m":"2005-12","y3m":3.89,"y10":4.47},{"m":"2006-01","y3m":4.24,"y10":4.4},{"m":"2006-02","y3m":4.43,"y10":4.57},{"m":"2006-03","y3m":4.51,"y10":4.71},{"m":"2006-04","y3m":4.6,"y10":4.98},{"m":"2006-05","y3m":4.72,"y10":5.11},{"m":"2006-06","y3m":4.79,"y10":5.11},{"m":"2006-07","y3m":4.95,"y10":5.1},{"m":"2006-08","y3m":4.96,"y10":4.89},{"m":"2006-09","y3m":4.81,"y10":4.72},{"m":"2006-10","y3m":4.92,"y10":4.73},{"m":"2006-11","y3m":4.94,"y10":4.6},{"m":"2006-12","y3m":4.85,"y10":4.54},{"m":"2007-01","y3m":4.98,"y10":4.74},{"m":"2007-02","y3m":5.03,"y10":4.74},{"m":"2007-03","y3m":4.94,"y10":4.56},{"m":"2007-04","y3m":4.87,"y10":4.69},{"m":"2007-05","y3m":4.73,"y10":4.73},{"m":"2007-06","y3m":4.61,"y10":5.1},{"m":"2007-07","y3m":4.82,"y10":5.02},{"m":"2007-08","y3m":4.2,"y10":4.7},{"m":"2007-09","y3m":3.89,"y10":4.52},{"m":"2007-10","y3m":3.9,"y10":4.53},{"m":"2007-11","y3m":3.26,"y10":4.17},{"m":"2007-12","y3m":3.01,"y10":4.09},{"m":"2008-01","y3m":2.78,"y10":3.76},{"m":"2008-02","y3m":2.12,"y10":3.74},{"m":"2008-03","y3m":1.23,"y10":3.51},{"m":"2008-04","y3m":1.29,"y10":3.65},{"m":"2008-05","y3m":1.73,"y10":3.85},{"m":"2008-06","y3m":1.86,"y10":4.1},{"m":"2008-07","y3m":1.63,"y10":3.96},{"m":"2008-08","y3m":1.72,"y10":3.89},{"m":"2008-09","y3m":1.13,"y10":3.66},{"m":"2008-10","y3m":0.67,"y10":3.78},{"m":"2008-11","y3m":0.19,"y10":3.53},{"m":"2008-12","y3m":0.03,"y10":2.42},{"m":"2009-01","y3m":0.13,"y10":2.44},{"m":"2009-02","y3m":0.3,"y10":2.84},{"m":"2009-03","y3m":0.21,"y10":2.82},{"m":"2009-04","y3m":0.16,"y10":2.87},{"m":"2009-05","y3m":0.18,"y10":3.27},{"m":"2009-06","y3m":0.18,"y10":3.71},{"m":"2009-07","y3m":0.18,"y10":3.54},{"m":"2009-08","y3m":0.17,"y10":3.58},{"m":"2009-09","y3m":0.12,"y10":3.39},{"m":"2009-10","y3m":0.07,"y10":3.36},{"m":"2009-11","y3m":0.05,"y10":3.4},{"m":"2009-12","y3m":0.05,"y10":3.55},{"m":"2010-01","y3m":0.06,"y10":3.73},{"m":"2010-02","y3m":0.11,"y10":3.69},{"m":"2010-03","y3m":0.15,"y10":3.71},{"m":"2010-04","y3m":0.16,"y10":3.83},{"m":"2010-05","y3m":0.16,"y10":3.43},{"m":"2010-06","y3m":0.12,"y10":3.22},{"m":"2010-07","y3m":0.16,"y10":2.99},{"m":"2010-08","y3m":0.16,"y10":2.71},{"m":"2010-09","y3m":0.15,"y10":2.63},{"m":"2010-10","y3m":0.13,"y10":2.51},{"m":"2010-11","y3m":0.14,"y10":2.74},{"m":"2010-12","y3m":0.14,"y10":3.26},{"m":"2011-01","y3m":0.15,"y10":3.37},{"m":"2011-02","y3m":0.13,"y10":3.56},{"m":"2011-03","y3m":0.1,"y10":3.4},{"m":"2011-04","y3m":0.06,"y10":3.44},{"m":"2011-05","y3m":0.04,"y10":3.17},{"m":"2011-06","y3m":0.04,"y10":2.99},{"m":"2011-07","y3m":0.04,"y10":3.01},{"m":"2011-08","y3m":0.02,"y10":2.32},{"m":"2011-09","y3m":0.01,"y10":1.98},{"m":"2011-10","y3m":0.02,"y10":2.12},{"m":"2011-11","y3m":0.01,"y10":2.0},{"m":"2011-12","y3m":0.01,"y10":1.98},{"m":"2012-01","y3m":0.03,"y10":1.95},{"m":"2012-02","y3m":0.09,"y10":1.95},{"m":"2012-03","y3m":0.08,"y10":2.15},{"m":"2012-04","y3m":0.08,"y10":2.05},{"m":"2012-05","y3m":0.09,"y10":1.81},{"m":"2012-06","y3m":0.09,"y10":1.61},{"m":"2012-07","y3m":0.1,"y10":1.51},{"m":"2012-08","y3m":0.1,"y10":1.67},{"m":"2012-09","y3m":0.11,"y10":1.7},{"m":"2012-10","y3m":0.11,"y10":1.72},{"m":"2012-11","y3m":0.1,"y10":1.65},{"m":"2012-12","y3m":0.07,"y10":1.72},{"m":"2013-01","y3m":0.07,"y10":1.87},{"m":"2013-02","y3m":0.1,"y10":1.97},{"m":"2013-03","y3m":0.09,"y10":1.95},{"m":"2013-04","y3m":0.06,"y10":1.74},{"m":"2013-05","y3m":0.05,"y10":1.9},{"m":"2013-06","y3m":0.05,"y10":2.29},{"m":"2013-07","y3m":0.04,"y10":2.55},{"m":"2013-08","y3m":0.05,"y10":2.73},{"m":"2013-09","y3m":0.02,"y10":2.81},{"m":"2013-10","y3m":0.05,"y10":2.6},{"m":"2013-11","y3m":0.07,"y10":2.7},{"m":"2013-12","y3m":0.07,"y10":2.88},{"m":"2014-01","y3m":0.05,"y10":2.87},{"m":"2014-02","y3m":0.05,"y10":2.7},{"m":"2014-03","y3m":0.05,"y10":2.71},{"m":"2014-04","y3m":0.03,"y10":2.7},{"m":"2014-05","y3m":0.03,"y10":2.56},{"m":"2014-06","y3m":0.03,"y10":2.59},{"m":"2014-07","y3m":0.02,"y10":2.53},{"m":"2014-08","y3m":0.03,"y10":2.41},{"m":"2014-09","y3m":0.02,"y10":2.52},{"m":"2014-10","y3m":0.01,"y10":2.29},{"m":"2014-11","y3m":0.02,"y10":2.32},{"m":"2014-12","y3m":0.03,"y10":2.2},{"m":"2015-01","y3m":0.02,"y10":1.88},{"m":"2015-02","y3m":0.02,"y10":1.98},{"m":"2015-03","y3m":0.02,"y10":2.04},{"m":"2015-04","y3m":0.02,"y10":1.92},{"m":"2015-05","y3m":0.02,"y10":2.2},{"m":"2015-06","y3m":0.01,"y10":2.36},{"m":"2015-07","y3m":0.03,"y10":2.32},{"m":"2015-08","y3m":0.06,"y10":2.16},{"m":"2015-09","y3m":0.02,"y10":2.17},{"m":"2015-10","y3m":0.02,"y10":2.06},{"m":"2015-11","y3m":0.12,"y10":2.26},{"m":"2015-12","y3m":0.22,"y10":2.24},{"m":"2016-01","y3m":0.25,"y10":2.09},{"m":"2016-02","y3m":0.31,"y10":1.77},{"m":"2016-03","y3m":0.29,"y10":1.89},{"m":"2016-04","y3m":0.23,"y10":1.8},{"m":"2016-05","y3m":0.27,"y10":1.8},{"m":"2016-06","y3m":0.27,"y10":1.64},{"m":"2016-07","y3m":0.3,"y10":1.49},{"m":"2016-08","y3m":0.3,"y10":1.56},{"m":"2016-09","y3m":0.29,"y10":1.63},{"m":"2016-10","y3m":0.32,"y10":1.76},{"m":"2016-11","y3m":0.45,"y10":2.15},{"m":"2016-12","y3m":0.51,"y10":2.49},{"m":"2017-01","y3m":0.52,"y10":2.43},{"m":"2017-02","y3m":0.53,"y10":2.42},{"m":"2017-03","y3m":0.74,"y10":2.48},{"m":"2017-04","y3m":0.81,"y10":2.29},{"m":"2017-05","y3m":0.9,"y10":2.3},{"m":"2017-06","y3m":1.0,"y10":2.19},{"m":"2017-07","y3m":1.08,"y10":2.32},{"m":"2017-08","y3m":1.03,"y10":2.21},{"m":"2017-09","y3m":1.04,"y10":2.2},{"m":"2017-10","y3m":1.09,"y10":2.36},{"m":"2017-11","y3m":1.25,"y10":2.35},{"m":"2017-12","y3m":1.33,"y10":2.4},{"m":"2018-01","y3m":1.43,"y10":2.58},{"m":"2018-02","y3m":1.59,"y10":2.86},{"m":"2018-03","y3m":1.73,"y10":2.84},{"m":"2018-04","y3m":1.78,"y10":2.87},{"m":"2018-05","y3m":1.89,"y10":2.98},{"m":"2018-06","y3m":1.93,"y10":2.91},{"m":"2018-07","y3m":1.98,"y10":2.89},{"m":"2018-08","y3m":2.07,"y10":2.89},{"m":"2018-09","y3m":2.16,"y10":3.0},{"m":"2018-10","y3m":2.28,"y10":3.16},{"m":"2018-11","y3m":2.37,"y10":3.12},{"m":"2018-12","y3m":2.4,"y10":2.83},{"m":"2019-01","y3m":2.41,"y10":2.71},{"m":"2019-02","y3m":2.43,"y10":2.67},{"m":"2019-03","y3m":2.45,"y10":2.57},{"m":"2019-04","y3m":2.42,"y10":2.53},{"m":"2019-05","y3m":2.39,"y10":2.39},{"m":"2019-06","y3m":2.21,"y10":2.07},{"m":"2019-07","y3m":2.14,"y10":2.06},{"m":"2019-08","y3m":1.99,"y10":1.63},{"m":"2019-09","y3m":1.93,"y10":1.7},{"m":"2019-10","y3m":1.69,"y10":1.7},{"m":"2019-11","y3m":1.57,"y10":1.81},{"m":"2019-12","y3m":1.56,"y10":1.86},{"m":"2020-01","y3m":1.55,"y10":1.75},{"m":"2020-02","y3m":1.55,"y10":1.51},{"m":"2020-03","y3m":0.32,"y10":0.88},{"m":"2020-04","y3m":0.14,"y10":0.65},{"m":"2020-05","y3m":0.13,"y10":0.67},{"m":"2020-06","y3m":0.16,"y10":0.73},{"m":"2020-07","y3m":0.13,"y10":0.62},{"m":"2020-08","y3m":0.1,"y10":0.65},{"m":"2020-09","y3m":0.1,"y10":0.68},{"m":"2020-10","y3m":0.1,"y10":0.78},{"m":"2020-11","y3m":0.09,"y10":0.87},{"m":"2020-12","y3m":0.08,"y10":0.93},{"m":"2021-01","y3m":0.08,"y10":1.06},{"m":"2021-02","y3m":0.04,"y10":1.25},{"m":"2021-03","y3m":0.03,"y10":1.61},{"m":"2021-04","y3m":0.02,"y10":1.62},{"m":"2021-05","y3m":0.02,"y10":1.61},{"m":"2021-06","y3m":0.03,"y10":1.51},{"m":"2021-07","y3m":0.05,"y10":1.31},{"m":"2021-08","y3m":0.05,"y10":1.28},{"m":"2021-09","y3m":0.04,"y10":1.37},{"m":"2021-10","y3m":0.05,"y10":1.58},{"m":"2021-11","y3m":0.05,"y10":1.56},{"m":"2021-12","y3m":0.06,"y10":1.46},{"m":"2022-01","y3m":0.14,"y10":1.77},{"m":"2022-02","y3m":0.32,"y10":1.93},{"m":"2022-03","y3m":0.44,"y10":2.13},{"m":"2022-04","y3m":0.76,"y10":2.75},{"m":"2022-05","y3m":0.98,"y10":2.9},{"m":"2022-06","y3m":1.51,"y10":3.14},{"m":"2022-07","y3m":2.23,"y10":2.9},{"m":"2022-08","y3m":2.67,"y10":2.9},{"m":"2022-09","y3m":3.17,"y10":3.51},{"m":"2022-10","y3m":3.75,"y10":3.98},{"m":"2022-11","y3m":4.23,"y10":3.87},{"m":"2022-12","y3m":4.33,"y10":3.62},{"m":"2023-01","y3m":4.62,"y10":3.55},{"m":"2023-02","y3m":4.76,"y10":3.75},{"m":"2023-03","y3m":4.8,"y10":3.67},{"m":"2023-04","y3m":5.04,"y10":3.46},{"m":"2023-05","y3m":5.27,"y10":3.58},{"m":"2023-06","y3m":5.3,"y10":3.75},{"m":"2023-07","y3m":5.4,"y10":3.9},{"m":"2023-08","y3m":5.45,"y10":4.17},{"m":"2023-09","y3m":5.47,"y10":4.37},{"m":"2023-10","y3m":5.49,"y10":4.79},{"m":"2023-11","y3m":5.42,"y10":4.49},{"m":"2023-12","y3m":5.39,"y10":4.02},{"m":"2024-01","y3m":5.38,"y10":4.05},{"m":"2024-02","y3m":5.39,"y10":4.21},{"m":"2024-03","y3m":5.38,"y10":4.21},{"m":"2024-04","y3m":5.38,"y10":4.54},{"m":"2024-05","y3m":5.39,"y10":4.48},{"m":"2024-06","y3m":5.38,"y10":4.31},{"m":"2024-07","y3m":5.34,"y10":4.24},{"m":"2024-08","y3m":5.18,"y10":3.87},{"m":"2024-09","y3m":4.85,"y10":3.72},{"m":"2024-10","y3m":4.63,"y10":4.09},{"m":"2024-11","y3m":4.53,"y10":4.36},{"m":"2024-12","y3m":4.37,"y10":4.39},{"m":"2025-01","y3m":4.31,"y10":4.63},{"m":"2025-02","y3m":4.32,"y10":4.45},{"m":"2025-03","y3m":4.3,"y10":4.28},{"m":"2025-04","y3m":4.31,"y10":4.27},{"m":"2025-05","y3m":4.35,"y10":4.42},{"m":"2025-06","y3m":4.34,"y10":4.38},{"m":"2025-07","y3m":4.35,"y10":4.38},{"m":"2025-08","y3m":4.22,"y10":4.26},{"m":"2025-09","y3m":4.01,"y10":4.12},{"m":"2025-10","y3m":3.91,"y10":4.05},{"m":"2025-11","y3m":3.86,"y10":4.09},{"m":"2025-12","y3m":3.67,"y10":4.14},{"m":"2026-01","y3m":3.64,"y10":4.21},{"m":"2026-02","y3m":3.68,"y10":4.12},{"m":"2026-03","y3m":3.69,"y10":4.24},{"m":"2026-04","y3m":3.69,"y10":4.31},{"m":"2026-05","y3m":3.68,"y10":4.48},{"m":"2026-06","y3m":3.74,"y10":4.47},{"m":"2026-07","y3m":3.81,"y10":4.6},{"m":"2026-08","y3m":3.8,"y10":4.68},{"m":"2026-09","y3m":4.03,"y10":4.99},{"m":"2026-10","y3m":4.13,"y10":5.27}]};
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (v,d=2) => v==null||isNaN(v) ? 'n/a' : (+v).toFixed(d);
+const mlabel = m => { const [y,mo]=m.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+mo-1]+' '+y; };
+const dlabel = d => { const [y,mo,da]=d.split('-'); return (+da)+' '+mlabel(y+'-'+mo); };
+
+/* theme */
+(function(){
+  let t=null; try{t=localStorage.getItem('rac-theme')}catch(e){}
+  if(t) document.documentElement.dataset.theme=t;
+  $('#themeBtn').onclick=()=>{
+    const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    const n = dark?'light':'dark'; document.documentElement.dataset.theme=n;
+    try{localStorage.setItem('rac-theme',n)}catch(e){}
+    redrawAll();
+  };
+})();
+
+/* as-of */
+const lastWith = k => { for(let i=DATA.macro.length-1;i>=0;i--) if(DATA.macro[i][k]!=null) return DATA.macro[i].month; };
+$('#asof').textContent = 'Data as of: US yields to 8 Oct 2026 close · CPI to '+mlabel(lastWith('cpi_yoy'))+' · unemployment, fed funds, breakeven and term premium to '+mlabel(lastWith('unemployment'));
+
+/* tabs */
+const mods=[...document.querySelectorAll('section.mod:not(.extra)')];
+let cur=0;
+mods.forEach((m,i)=>{ const b=document.createElement('button'); b.setAttribute('role','tab'); b.innerHTML='<b>0'+(i+1)+'</b>'+m.dataset.tab; b.onclick=()=>go(i); $('#tabs').appendChild(b); });
+function go(i){ const ngEl=document.getElementById('ng'); if(ngEl) ngEl.classList.remove('on'); const nr=document.getElementById('navrow'); if(nr) nr.style.display=''; cur=Math.max(0,Math.min(mods.length-1,i)); mods.forEach((m,j)=>m.classList.toggle('on',j===cur)); [...$('#tabs').children].forEach((b,j)=>b.setAttribute('aria-selected',j===cur)); $('#prevBtn').style.visibility=cur?'visible':'hidden'; $('#nextBtn').style.visibility=cur<mods.length-1?'visible':'hidden'; try{history.replaceState(null,'','#'+(cur+1))}catch(e){} window.scrollTo({top:0}); redrawAll(); }
+$('#prevBtn').onclick=()=>go(cur-1); $('#nextBtn').onclick=()=>go(cur+1);
+
+/* line chart */
+function lineChart(host, o){
+  host.innerHTML='';
+  const W=640, H=o.h||220, L=40, R=12, T=10, B=26;
+  const n=o.x.length, iw=W-L-R, ih=H-T-B;
+  let vals=[]; o.series.forEach(s=>s.v.forEach(v=>{if(v!=null)vals.push(v)}));
+  let lo=Math.min(...vals), hi=Math.max(...vals); if(o.zero) lo=Math.min(0,lo);
+  const pad=(hi-lo)*0.08||1; const nonneg=lo>=0; lo-=pad; hi+=pad; if(nonneg) lo=Math.max(0,lo);
+  const step=niceStep((hi-lo)/4); lo=Math.floor(lo/step)*step; hi=Math.ceil(hi/step)*step;
+  const X=i=> L + (n===1?iw/2: i*iw/(n-1)), Y=v=> T + ih - (v-lo)/(hi-lo)*ih;
+  const col = s => css(s.c);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.label||''}">`;
+  if(o.band){ const a=o.x.findIndex(o.band); if(a>=0) svg+=`<rect class="band" x="${X(a)}" y="${T}" width="${X(n-1)-X(a)+2}" height="${ih}"/>`; }
+  if(o.zones) o.zones.forEach(z=>{ svg+=`<rect class="${z.cls}" x="${X(z.a)}" y="${T}" width="${Math.max(1.5,X(z.b)-X(z.a))}" height="${ih}"/>`; });
+  for(let v=lo; v<=hi+1e-9; v+=step){ svg+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end">${(+v.toFixed(2))}${o.unit||''}</text>`; }
+  svg+=`<line class="ax" x1="${L}" x2="${W-R}" y1="${T+ih}" y2="${T+ih}"/>`;
+  const every = o.tickEvery || Math.ceil(n/7);
+  o.x.forEach((x,i)=>{ if(o.tick ? o.tick(x,i) : i%every===0) svg+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle">${o.xfmt?o.xfmt(x):x}</text>`; });
+  if(o.vline!=null){ const vs=[].concat(o.vline), ls=[].concat(o.vlabel||''); vs.forEach((vv,k)=>{ const i=o.x.indexOf(vv); if(i>=0) svg+=`<line class="vl" x1="${X(i)}" x2="${X(i)}" y1="${T}" y2="${T+ih}"/><text x="${X(i)+4}" y="${T+11+k*13}" text-anchor="start">${ls[k]||''}</text>`; }); }
+  o.series.forEach(s=>{ let d='',pen=false; s.v.forEach((v,i)=>{ if(v==null){pen=false;return;} d+=(pen?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1); pen=true; }); svg+=`<path class="ln" d="${d}" stroke="${col(s)}"/>`; if(o.points) s.v.forEach((v,i)=>{ if(v!=null) svg+=`<circle class="dot" cx="${X(i)}" cy="${Y(v)}" r="4.5" fill="${col(s)}"/>`; }); });
+  svg+=`<line class="xh" id="xh" x1="0" x2="0" y1="${T}" y2="${T+ih}" style="display:none"/>`;
+  o.series.forEach((s,k)=> svg+=`<circle class="dot hd" data-k="${k}" r="4.5" fill="${col(s)}" style="display:none"/>`);
+  svg+=`<rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="transparent" class="hit"/></svg>`;
+  if(o.series.length>1){ const lg=document.createElement('div'); lg.className='legend'; lg.innerHTML=o.series.map(s=>`<span><i class="sw" style="background:${col(s)}"></i>${s.name}</span>`).join(''); host.appendChild(lg); }
+  const box=document.createElement('div'); box.style.position='relative'; box.innerHTML=svg; host.appendChild(box);
+  const tip=document.createElement('div'); tip.className='tip'; box.appendChild(tip);
+  const svgEl=box.querySelector('svg'), xh=svgEl.querySelector('#xh'), hd=[...svgEl.querySelectorAll('.hd')];
+  const move=e=>{ const r=svgEl.getBoundingClientRect(); const cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left; const sx=cx*W/r.width; let i=Math.round((sx-L)/(iw/(n-1||1))); i=Math.max(0,Math.min(n-1,i));
+    xh.setAttribute('x1',X(i)); xh.setAttribute('x2',X(i)); xh.style.display='';
+    o.series.forEach((s,k)=>{ const v=s.v[i]; if(v==null){hd[k].style.display='none';return;} hd[k].setAttribute('cx',X(i)); hd[k].setAttribute('cy',Y(v)); hd[k].style.display=''; });
+    tip.innerHTML=`<div style="font-weight:600;margin-bottom:2px">${o.xfmt?o.xfmt(o.x[i]):o.x[i]}</div>`+o.series.map(s=>`<div class="r"><i class="sw" style="background:${col(s)}"></i>${s.name}: <b>${fmt(s.v[i],o.dp??2)}${o.unit||''}</b></div>`).join('')+(o.sw&&o.sw(i)?`<div class="sw-note"><b>So what:</b> ${o.sw(i)}</div>`:'');
+    tip.style.display='block'; const px=X(i)*r.width/W; tip.style.left=Math.min(px+12, r.width-tip.offsetWidth-4)+'px'; tip.style.top='4px'; };
+  const hit=svgEl.querySelector('.hit'); hit.addEventListener('mousemove',move); hit.addEventListener('touchstart',move,{passive:true}); hit.addEventListener('touchmove',move,{passive:true});
+  hit.addEventListener('mouseleave',()=>{tip.style.display='none';xh.style.display='none';hd.forEach(h=>h.style.display='none');});
+}
+function niceStep(r){ const p=Math.pow(10,Math.floor(Math.log10(r))); const f=r/p; return (f<1.5?1:f<3?2:f<7?5:10)*p; }
+
+/* ---------- Global hover "so what" ---------- */
+const GT=document.createElement('div'); GT.className='gtip'; document.body.appendChild(GT);
+function showGT(el,x,y){ const t=el.getAttribute('data-sw'); if(!t) return; GT.innerHTML='<b class="h">So what</b>'+t; GT.style.display='block';
+  const w=GT.offsetWidth,h=GT.offsetHeight; let L=x+14,T=y+14; if(L+w>innerWidth-8) L=x-w-14; if(T+h>innerHeight-8) T=y-h-14; GT.style.left=Math.max(8,L)+'px'; GT.style.top=Math.max(8,T)+'px'; }
+document.addEventListener('mousemove',e=>{ const el=e.target.closest&&e.target.closest('[data-sw]'); if(el) showGT(el,e.clientX,e.clientY); else GT.style.display='none'; });
+document.addEventListener('touchstart',e=>{ const el=e.target.closest&&e.target.closest('[data-sw]'); if(el){const t=e.touches[0]; showGT(el,t.clientX,t.clientY);} else GT.style.display='none'; },{passive:true});
+
+/* ---------- Full screen on first click only ---------- */
+(function(){
+  let done=false;
+  const fs=()=>{ const d=document.documentElement; if(document.fullscreenElement) return; const f=d.requestFullscreen||d.webkitRequestFullscreen; if(f) try{ const p=f.call(d); if(p&&p.catch) p.catch(()=>{});}catch(e){} };
+  document.addEventListener('click',()=>{ if(done) return; done=true; fs(); },{capture:true});
+  const b=$('#fsBtn'); if(b) b.onclick=e=>{ e.stopPropagation(); done=true; if(document.fullscreenElement){ document.exitFullscreen&&document.exitFullscreen(); } else fs(); };
+})();
+
+/* ---------- Module 1 ---------- */
+const Q=[
+ {n:'01',c:'--s1',t:'Survival and financial integrity',v:'I keep the lights on with the cash the business generates.',nat:'Defensive. Failure = game over.',
+  i:[['Cash and liquidity','Cash runs out before profits do. Know how many months you can survive with markets closed.'],['Working capital','Receivables, inventory and payables can free or trap more cash than any loan.'],['Solvency','A strong balance sheet is what keeps lenders open when markets turn.'],['Reporting and audit','Late or wrong numbers raise the cost of capital the next time you borrow.'],['Controls and governance','Weak controls show up as surprises, and markets punish surprises.'],['Enterprise risk','Name the five things that could sink the firm, and watch them.']]},
+ {n:'02',c:'--gold',t:'Capital structure and funding',v:'I raise money to stay liquid and solvent.',nat:'External. Sets the constraints. Failure = forced decisions later.',
+  i:[['Financing mix','Debt is cheaper but must be repaid. Equity is costly but waits.'],['Cost of capital','The hurdle every project must clear. It moves with yields.'],['Maturity profile','Too much debt due in one year is a bet that markets will be open that year.'],['Rating and lenders','A one-notch downgrade can add more cost than a rate hike.'],['Market access','Price matters; access matters more. In a crisis, only access counts.'],['Hedging','Fix what you cannot afford to have move: rates, FX, energy.']]},
+ {n:'03',c:'--s3',t:'Capital allocation and performance',v:'I invest surplus or raised cash where it creates value.',nat:'Internal. Creates value. Failure = value destruction.',
+  i:[['Capital budgeting','Expand, delay or cancel. The answer changes when the hurdle rate changes.'],['M&A','Deals done at the top of a cheap-money cycle are often the ones written off later.'],['Cost structure','Fixed costs feel fine in good years and hurt in bad ones.'],['Portfolio choices','Fund the units that earn above the cost of capital; fix or exit the rest.'],['ROIC and hurdle rates','Value is created only when return exceeds the cost of capital.'],['Buybacks and dividends','Return cash when you cannot invest it above the hurdle rate.']]},
+ {n:'04',c:'--s4',t:'Strategic influence and future',v:'I shape the future and align finance with the business.',nat:'Adaptive. Forward-looking. Failure = slow irrelevance.',
+  i:[['Business model change','When technology shifts, the old model can be profitable and dying at the same time.'],['Cross-functional leadership','Strategy fails when finance is consulted at the end.'],['Decision intelligence','Better data shortens the time from signal to decision.'],['Long-term value and ESG','Lenders now price climate and governance risk into the cost of capital.'],['Talent and organisation','A finance team that only reports cannot steer.'],['Finance technology','Automation frees the team to analyse instead of compile.']]}
+];
+const MONEY=[
+ {k:'bust',l:'Dot-com bust',y:'2000 to 2002',b:3.59,t:5.20,w:[90,70,40,55],d:'Tech valuations collapse. US recession in 2001. Rates are cut fast.',a:['Protect cash. Equity markets are shut for weak names.','Refinance before ratings fall.','Cancel projects built on boom-time forecasts.','Keep the strategic bets that still make sense.']},
+ {k:'n1',l:'Normal',y:'2004 to 2006',b:3.08,t:4.45,w:[60,60,60,60],d:'Steady growth. The Fed raises rates step by step from 1% to 5.25%.',a:['Run a steady liquidity buffer.','Refinance on schedule. Watch rising short rates.','Allocate on standard hurdle rates.','Steady investment in capabilities.']},
+ {k:'gfc',l:'Credit crisis',y:'2008 to 2009',b:0.76,t:3.44,w:[100,90,30,45],d:'Banks stop lending. Access to money matters more than its price.',a:['Survival first. Draw credit lines before banks cut them.','Secure any funding available, even at a high price.','Freeze discretionary capex.','Protect the core; defer the rest.']},
+ {k:'zero',l:'Zero rates',y:'2010 to 2015',b:0.07,t:2.47,w:[50,85,85,60],d:'Policy rates near zero for six years. Money is cheap and plentiful.',a:['A modest buffer is enough; borrowing is easy.','Lock in long-term fixed debt at record lows.','Deploy: more projects clear a low hurdle rate.','Invest in the future while funding is easy.']},
+ {k:'n2',l:'Normal',y:'2017 to 2019',b:1.67,t:2.46,w:[60,60,60,60],d:'Rates rise slowly from near zero, then the curve flattens and inverts in 2019.',a:['Run a steady liquidity buffer.','Extend maturities while the long end is still cheap.','Allocate on standard hurdle rates.','Steady investment in capabilities.']},
+ {k:'pand',l:'Pandemic cheap money',y:'2020 to 2021',b:0.20,t:1.16,w:[75,90,80,60],d:'A sudden stop, then the cheapest money in history.',a:['2020: survive the stop. 2021: rebuild the buffer.','Raise long-dated money at historic lows.','Invest in what the shock accelerated.','Rethink the model for remote and digital.']},
+ {k:'infl',l:'Inflation shock',y:'2022 to 2023',b:3.63,t:3.46,w:[80,85,50,55],d:'Inflation reaches 9%. The fastest rate rises in 40 years. The curve inverts.',a:['Protect margins and cash as costs rise.','Fix floating debt before more hikes.','Raise hurdle rates. Delay marginal capex.','Keep investing in the core; cut the rest.']},
+ {k:'spike',l:'Yield spike',y:'2026',b:3.77,t:4.49,w:[95,85,40,55],d:'War-driven oil shock. Term premium jumps. US 10-year hits 5.31%, the highest since 2007.',a:['Protect cash first. Stress-test for a closed market.','Avoid refinancing at peak rates if you can. Hedge floating debt.','Raise hurdle rates. Favour short-payback projects.','Keep investing in the core; cut the rest.']}
+];
+const BIZ=[
+ {k:'stable',l:'Stable',e:'No major change in how the industry makes money.',dw:[0,0,0,0],a:['','','','']},
+ {k:'tech',l:'Technology disruption',e:'Examples: the internet, 1995 to 2001; AI, 2023 to 2026.',dw:[0,5,15,40],a:['','Fund the transition with equity or long-dated debt, not short loans.','Back the new model; cut spend on the old one.','Lead: rethink the business model, talent and data.']},
+ {k:'shock',l:'Geopolitical or climate shock',e:'Examples: Russia-Ukraine, 2022; Gulf war and Hormuz closure, 2026; El Niño, 2026.',dw:[15,10,-5,10],a:['Stress-test supply, input costs and cash.','Hedge energy, FX and rates.','Pause projects exposed to the shock.','Map how the shock reaches your P&L.']}
+];
+let mk='n2', bk='stable';
+function buildSegs(){
+  $('#moneySeg').innerHTML=MONEY.map(m=>`<button data-m="${m.k}" aria-pressed="${m.k===mk}"><span>${m.l}</span><small>${m.y}</small></button>`).join('');
+  $('#bizSeg').innerHTML=BIZ.map(b=>`<button data-b="${b.k}" aria-pressed="${b.k===bk}">${b.l}</button>`).join('');
+  document.querySelectorAll('#moneySeg button').forEach(b=>b.onclick=()=>{mk=b.dataset.m;buildSegs();drawM1();});
+  document.querySelectorAll('#bizSeg button').forEach(b=>b.onclick=()=>{bk=b.dataset.b;buildSegs();drawM1();});
+}
+function drawM1(){
+  const M=MONEY.find(x=>x.k===mk), B=BIZ.find(x=>x.k===bk);
+  const w=M.w.map((v,i)=>Math.max(20,Math.min(100,v+B.dw[i])));
+  const top=Math.max(...w);
+  $('#regInfo').innerHTML=`<b>${M.l}, ${M.y}.</b> ${M.d}<div class="rnums"><span>3-month bill<b>${fmt(M.b)}%</b></span><span>10-year<b>${fmt(M.t)}%</b></span></div><b>${B.l}.</b> ${B.e}`;
+  Q.forEach((q,k)=>{
+    const lvl=w[k]>=80?'High':w[k]>=55?'Medium':'Low';
+    const el=$('#q'+k); el.style.setProperty('--qc',`var(${q.c})`); el.style.setProperty('--a',(w[k]/100).toFixed(2));
+    el.className='fw-q'+(w[k]>=80&&w[k]===top||w[k]>=90?' focus':'')+(w[k]<50?' dim':'');
+    el.innerHTML=`<div class="top" data-sw="<i>${q.v}</i><br>${q.nat}"><div class="qn">${q.n}</div><h3>${q.t}</h3></div>
+      <div class="wt"><span class="muted">CFO attention</span><span class="meter"><i style="width:${w[k]}%"></i></span><b>${lvl}</b></div>
+      <div class="act"><div>${M.a[k]}</div>${B.a[k]?'<div>'+B.a[k]+'</div>':''}</div>
+      <div class="chips">${q.i.map(x=>`<span class="chip" data-sw="${x[1]}">${x[0]}</span>`).join('')}</div>
+      ${k===0?'<div class="fw-core"><b>CFO</b><span>Core mandate</span></div>':''}${k===3?'<button class="btn primary open" id="openNG">Open: the connected CFO &rarr;</button>':''}`;
+  });
+  $('#openNG').onclick=e=>{e.stopPropagation();openNG();};
+  $('#q3').onclick=e=>{ if(!e.target.closest('.chip')) openNG(); };
+  $('#q3').style.cursor='pointer';
+}
+buildSegs();
+
+/* ---------- Connected CFO ---------- */
+const DISC=[
+ ['geo','Geography','Where things are made, grown and shipped. Climate, chokepoints, trade routes.','Which of our inputs pass through a single route or region?'],
+ ['hist','History','What happened the last time. 1973, 1990, 2008, 2022.','When did this happen before, and what did it do to rates and demand?'],
+ ['tech','Technology','What can now be done cheaper or differently.','Which part of our model could a new technology make obsolete?'],
+ ['fin','Finance','Depth: valuation, capital markets, treasury, accounting.','What does this do to cash, cost of capital and value?'],
+ ['law','Law','Contracts, sanctions, regulation, force majeure.','Which contracts protect us, and which expose us?'],
+ ['biz','Business','Customers, competitors, pricing power.','Can we pass the cost on, and will customers stay?'],
+ ['ops','Operations','Supply chains, inventory, capacity.','How long can we run if one supplier stops?'],
+ ['pol','Political science','How governments and voters react.','What will governments do next: subsidise, ban, tax or spend?']
+];
+function drawT(lit){
+  lit=lit||[];
+  $('#tshape').innerHTML=DISC.map(d=>`<div class="tcell ${d[0]==='fin'?'fin':''} ${lit.includes(d[0])?'lit':''}" data-sw="<b>Enough means:</b> ${d[2]}<br><b>Ask:</b> ${d[3]}">${d[1]}</div>`).join('')+
+   `<div class="tstem ${lit.includes('fin')?'lit':''}" data-sw="Finance is the one place the CFO must be deep. Every other discipline feeds a question; finance turns the answer into a number."><b>Depth in finance</b>Valuation · capital markets · treasury · accounting</div>`;
+}
+const CHAINS={
+ gulf:[
+  {k:'Event',t:'War in the Gulf',f:1,d:['pol','hist','geo'],x:'A US-Iran war began on 28 Feb 2026. Drones targeted Saudi Aramco\'s Ras Tanura refinery on 2 Mar; both were intercepted. On 25 Sep the Houthis claimed attacks on Aramco facilities at Yanbu.',s:'History says Gulf conflicts reach oil prices fast: 1973, 1990 and the 2019 Abqaiq attack.'},
+  {k:'Physical',t:'Hormuz closes',f:1,d:['geo','ops'],x:'The Strait of Hormuz, which normally carries about 20% of global oil and LNG, was effectively closed. At least 11 million barrels a day of crude went offline by end April (Kpler).',s:'One chokepoint can remove a tenth of world oil supply.'},
+  {k:'Markets',t:'Oil jumps',f:1,d:['fin'],x:'Brent rose about 60% in March, a record monthly jump. It reached $123.30 on 30 Apr and was back above $106 after the Yanbu attacks in September.',s:'Energy costs flow into almost every input price within months.'},
+  {k:'Economy',t:'Inflation returns',f:1,d:['fin','biz'],x:'US headline CPI rose from 2.4% in Feb to 4.2% in May 2026. Core CPI stayed between 2.5% and 2.8%. Energy explains the gap.',s:'Headline inflation can force the central bank to stop cutting, even when the core is calm.'},
+  {k:'Policy',t:'Rates rise',f:1,d:['pol','fin'],x:'The Fed stopped cutting; fed funds rose from 3.63% to 3.75% in Sep. The 10-year term premium rose from 0.55 to 0.96 points.',s:'Lenders demand more for long-term risk when the outlook is uncertain.'},
+  {k:'CFO',t:'Act',f:0,d:['fin','law','ops','biz'],x:'The US 10-year reached 5.31% on 5 Oct. Cost of capital is up for debt and equity.',s:'Hedge energy and freight. Check force majeure and sanctions clauses. Lock funding. Reprice products. Stress-test Gulf exposure.'}
+ ],
+ nino:[
+  {k:'Event',t:'Warm Pacific',f:1,d:['geo'],x:'A strong El Niño: equatorial Pacific sea temperatures 1.8°C above normal in September 2026, expected to stay very strong through January.',s:'El Niño shifts rainfall across Asia, Australia, Africa and the Americas.'},
+  {k:'Physical',t:'Weak monsoon',f:1,d:['geo','ops'],x:'India\'s monsoon was 14.7% below its long-run average as of 14 Sep 2026. 24 of 36 sub-divisions had deficits above 10%.',s:'Uneven rain lowers crop yields even when sowing looks normal.'},
+  {k:'Society',t:'Food and politics',f:0,d:['pol','hist'],x:'Lower yields hit rural incomes. Food prices are politically sensitive, so governments respond with export bans, subsidies and price controls. India restricted rice exports in 2023.',s:'Policy reactions can move prices more than the weather itself.'},
+  {k:'Economy',t:'Food inflation',f:1,d:['biz','fin'],x:'The FAO food price index reached 133.3 in August 2026, its highest since November 2022. Maize, pulses and soyabean prices in India rose sharply.',s:'Food has a large weight in emerging-market inflation baskets.'},
+  {k:'Policy',t:'Rates stay high',f:0,d:['pol','fin'],x:'Central banks where food is a large share of CPI tend to hold rates higher for longer. Subsidies add to government borrowing.',s:'Higher government borrowing can push up local bond yields.'},
+  {k:'CFO',t:'Act',f:0,d:['fin','ops','biz','law'],x:'Input costs, rural demand and inventory needs all move.',s:'Hedge agri inputs. Revisit rural demand forecasts. Plan inventory and working capital. Check supplier contracts. Decide what price rises customers will accept.'}
+ ]
+};
+let chainK='gulf', stepI=0;
+function drawChain(){
+  const C=CHAINS[chainK];
+  $('#chain').innerHTML=C.map((s,i)=>`<div class="step ${i===stepI?'on':''}" data-i="${i}"><div class="k">${i+1}. ${s.k}</div><div class="t">${s.t}</div><div style="margin-top:6px"><span class="pill ${s.f?'lo':'md'}">${s.f?'Fact':'Reasoning'}</span></div></div>`).join('');
+  document.querySelectorAll('#chain .step').forEach(el=>el.onclick=()=>{stepI=+el.dataset.i;drawChain();});
+  const s=C[stepI];
+  $('#chainDetail').innerHTML=`<div>${s.x}</div><div class="so"><b>So what:</b> ${s.s}</div><div class="tags">Disciplines used: ${s.d.map(k=>DISC.find(d=>d[0]===k)[1]).join(', ')}</div>`;
+  drawT(s.d);
+}
+document.querySelectorAll('#chainSeg button').forEach(b=>b.onclick=()=>{chainK=b.dataset.c;stepI=0;document.querySelectorAll('#chainSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));drawChain();});
+function openNG(){ mods.forEach(m=>m.classList.remove('on')); $('#ng').classList.add('on'); [...$('#tabs').children].forEach(b=>b.setAttribute('aria-selected','false')); $('#navrow').style.display='none'; try{history.replaceState(null,'','#ng')}catch(e){} window.scrollTo({top:0}); drawChain(); }
+$('#ngBack').onclick=()=>{ $('#ng').classList.remove('on'); $('#navrow').style.display=''; go(0); };
+
+/* ---------- Module 2 ---------- */
+const CURVE_SW=sp=> sp<0 ? 'Inverted: short rates are above long rates. The market expects rate cuts. In 2000 and 2006 this came 7 to 16 months before a US recession; after 2022 no recession followed in this data. CFO: lock in long-term debt and build cash.'
+ : sp<0.75 ? 'Flat: the cycle is late. CFO: check refinancing dates and the cash buffer.'
+ : sp<2 ? 'Normal slope. CFO: run the standard funding plan.'
+ : 'Steep: short money is cheap, long money is dear. Usually after rate cuts, in early recovery. CFO: floating debt looks cheap but adds risk when rates rise; term out debt as the recovery builds.';
+function runs(arr,test){ const z=[]; let a=null; arr.forEach((v,i)=>{ if(test(v)){ if(a===null) a=i; } else if(a!==null){ z.push([a,i-1]); a=null; } }); if(a!==null) z.push([a,arr.length-1]); return z; }
+function drawM2(){
+  const c=DATA.curveM, sp=c.map(r=>r.y10-r.y3m);
+  const zones=[...runs(sp,v=>v<0).map(([a,b])=>({a:Math.max(0,a-0.5),b:b+0.5,cls:'zinv'})),...runs(sp,v=>v>=2).map(([a,b])=>({a:Math.max(0,a-0.5),b:b+0.5,cls:'zsteep'}))];
+  lineChart($('#cAnnual'),{x:c.map(r=>r.m),series:[{name:'3-month bill',v:c.map(r=>r.y3m),c:'--s2'},{name:'10-year note',v:c.map(r=>r.y10),c:'--s1'}],unit:'%',zero:true,zones,tick:m=>m.endsWith('-01')&&(+m.slice(0,4))%4===0,xfmt:m=>mlabel(m),
+    sw:i=>`10-year minus 3-month = ${(sp[i]>=0?'+':'')+fmt(sp[i])} points. `+CURVE_SW(sp[i]),label:'US yields monthly average'});
+  document.querySelectorAll('#cAnnual svg text').forEach(t=>{ if(/^Jan \d{4}$/.test(t.textContent)) t.textContent=t.textContent.slice(4); });
+}
+
+/* ---------- Module 3 ---------- */
+const mrow = m => DATA.macro.find(r=>r.month===m);
+const feb=mrow('2026-02'), sep=mrow('2026-09');
+const PRE={ feb:{real:+(feb.y10-feb.breakeven_10y-feb.term_premium_10y).toFixed(2),inf:feb.breakeven_10y,term:feb.term_premium_10y},
+            sep:{real:+(sep.y10-sep.breakeven_10y-sep.term_premium_10y).toFixed(2),inf:sep.breakeven_10y,term:sep.term_premium_10y} };
+const LAY=[
+ {k:'real',n:'Real return',d:'What lenders earn after inflation. Driven by growth and the expected policy rate.',c:'--s1',min:-1,max:4},
+ {k:'inf',n:'Inflation premium',d:'Compensation for expected inflation.',c:'--s2',min:0,max:5},
+ {k:'term',n:'Term premium',d:'Extra pay for locking money up for 10 years.',c:'--s3',min:-1,max:2.5},
+ {k:'liq',n:'Liquidity premium',d:'Extra pay because the bond is harder to sell.',c:'--s4',min:0,max:1.5},
+ {k:'def',n:'Default premium',d:'Extra pay for the risk the borrower does not repay.',c:'--gold',min:0,max:5}
+];
+let Y3={...PRE.sep,liq:0.25,def:1.25}, bond='tsy';
+function sliderHTML(id,l,val,min,max,step,dis){ return `<div class="slider"><label for="${id}">${l.n}<small>${l.d}</small></label><output id="${id}o">${fmt(val)}</output><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" ${dis?'disabled':''}></div>`; }
+function drawM3(){
+  $('#sliders').innerHTML=LAY.map(l=>sliderHTML('y_'+l.k,l,(bond==='tsy'&&(l.k==='liq'||l.k==='def'))?0:Y3[l.k],l.min,l.max,0.01,bond==='tsy'&&(l.k==='liq'||l.k==='def'))).join('')+(bond==='corp'?'<p class="small muted" style="margin:4px 0 0">Liquidity and default premiums here are illustrative values for a BBB company. Adjust them.</p>':'<p class="small muted" style="margin:4px 0 0">A US Treasury is treated as liquid and default-free, so the last two layers are zero.</p>');
+  LAY.forEach(l=>{ const el=$('#y_'+l.k); el.oninput=()=>{Y3[l.k]=+el.value; $('#y_'+l.k+'o').textContent=fmt(el.value); paintM3(); document.querySelectorAll('#presetSeg button').forEach(x=>x.setAttribute('aria-pressed','false'));}; });
+  paintM3();
+}
+function paintM3(){
+  const v=LAY.map(l=>({...l,val:(bond==='tsy'&&(l.k==='liq'||l.k==='def'))?0:Y3[l.k]}));
+  const tot=v.reduce((s,x)=>s+x.val,0); $('#yTotal').textContent=fmt(tot)+'%';
+  const pos=v.reduce((s,x)=>s+Math.max(0,x.val),0)||1;
+  $('#yBar').innerHTML=v.filter(x=>x.val>0).map(x=>`<div style="width:${x.val/pos*100}%;background:var(${x.c})" title="${x.n}: ${fmt(x.val)}%">${x.val/pos>0.09?fmt(x.val):''}</div>`).join('');
+  $('#yLegend').innerHTML=v.filter(x=>x.val!==0||bond==='corp').map(x=>`<span><i class="sw" style="background:var(${x.c})"></i>${x.n}</span>`).join('');
+  let run=0; $('#yExplain').innerHTML=v.filter(x=>!(bond==='tsy'&&(x.k==='liq'||x.k==='def'))).map(x=>{run+=x.val; return `<li>Add ${x.n.toLowerCase()} of ${fmt(x.val)} points. Running total: <b>${fmt(run)}%</b>.</li>`;}).join('');
+}
+document.querySelectorAll('#bondSeg button').forEach(b=>b.onclick=()=>{bond=b.dataset.b;document.querySelectorAll('#bondSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));drawM3();});
+document.querySelectorAll('#presetSeg button').forEach(b=>b.onclick=()=>{Object.assign(Y3,PRE[b.dataset.p]);document.querySelectorAll('#presetSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));drawM3();});
+(function(){
+  const rows=[['US 10-year yield','y10'],['Inflation premium (breakeven)','breakeven_10y'],['Term premium (model)','term_premium_10y']];
+  const rf=feb.y10-feb.breakeven_10y-feb.term_premium_10y, rs=sep.y10-sep.breakeven_10y-sep.term_premium_10y;
+  let h='<thead><tr><th>Component</th><th class="n">Feb 2026</th><th class="n">Sep 2026</th><th class="n">Change</th><th class="n">Share of rise</th></tr></thead><tbody>';
+  const tot=sep.y10-feb.y10;
+  rows.forEach(([n,k],i)=>{ const c=sep[k]-feb[k]; h+=`<tr><td>${i===0?'<b>'+n+'</b>':n}</td><td class="n">${fmt(feb[k])}%</td><td class="n">${fmt(sep[k])}%</td><td class="n ${c>0.1?'up':''}">${c>=0?'+':''}${fmt(c)}</td><td class="n">${i===0?'100%':Math.round(c/tot*100)+'%'}</td></tr>`; });
+  h+=`<tr><td>Real return (what is left)</td><td class="n">${fmt(rf)}%</td><td class="n">${fmt(rs)}%</td><td class="n">+${fmt(rs-rf)}</td><td class="n">${Math.round((rs-rf)/tot*100)}%</td></tr></tbody>`;
+  $('#decompTbl').innerHTML=h;
+})();
+
+/* ---------- Module 4 ---------- */
+const E={rf:+feb.y10.toFixed(2),beta:0.8,erp:5.0,tax:25,dw:30,sp:1.5}; let eqs='calm';
+const ES=[{k:'rf',n:'Risk-free rate (US 10-year)',d:'Feb 2026 monthly average to start.',min:0,max:8,st:0.01},{k:'beta',n:'Beta',d:'How much the stock moves with the market. 1.0 = moves with the market.',min:0.3,max:2,st:0.05},{k:'erp',n:'Equity risk premium',d:'Extra return investors want for holding equities.',min:3,max:9,st:0.1},{k:'sp',n:'Credit spread on debt',d:'Liquidity plus default premium for the company.',min:0.5,max:4,st:0.05},{k:'dw',n:'Debt share of funding (%)',d:'Debt as a share of debt plus equity.',min:0,max:70,st:1},{k:'tax',n:'Tax rate (%)',d:'Interest is tax-deductible.',min:0,max:40,st:1}];
+function stressed(){ if(eqs==='calm') return {...E}; return {...E, rf:E.rf+1.29, erp:E.erp+1.0, beta:E.beta+(1-E.beta)/2}; }
+function drawM4(){
+  $('#eqSliders').innerHTML=ES.map(s=>`<div class="slider"><label for="e_${s.k}">${s.n}<small>${s.d}</small></label><output id="e_${s.k}o">${fmt(E[s.k],s.st<1?2:0)}</output><input type="range" id="e_${s.k}" min="${s.min}" max="${s.max}" step="${s.st}" value="${E[s.k]}"></div>`).join('');
+  ES.forEach(s=>{ const el=$('#e_'+s.k); el.oninput=()=>{E[s.k]=+el.value; $('#e_'+s.k+'o').textContent=fmt(el.value,s.st<1?2:0); paintM4();}; });
+  paintM4();
+}
+function calc(p){ const ke=p.rf+p.beta*p.erp, kd=(p.rf+p.sp)*(1-p.tax/100), w=p.dw/100; return {ke,kd,wacc:(1-w)*ke+w*kd}; }
+function paintM4(){
+  const b=calc(E), s=stressed(), r=calc(s), show=eqs==='calm'?b:r;
+  $('#ke').textContent=fmt(show.ke)+'%'; $('#kd').textContent=fmt(show.kd)+'%'; $('#wacc').textContent=fmt(show.wacc)+'%';
+  const dd=(x,y)=> eqs==='calm'?'Calm market':( (y-x>=0?'+':'')+fmt(y-x)+' vs calm');
+  $('#keD').textContent=dd(b.ke,r.ke); $('#kdD').textContent=dd(b.kd,r.kd); $('#waccD').textContent=dd(b.wacc,r.wacc);
+  const c1=(s.rf-E.rf), c2=E.beta*(s.erp-E.erp), c3=(s.beta-E.beta)*s.erp;
+  $('#chanTbl').innerHTML=`<thead><tr><th>Channel</th><th class="n">Effect on cost of equity</th></tr></thead><tbody>
+   <tr><td>1. Risk-free rate rises</td><td class="n">${eqs==='calm'?'0.00':'+'+fmt(c1)}</td></tr>
+   <tr><td>2. Equity risk premium widens</td><td class="n">${eqs==='calm'?'0.00':'+'+fmt(c2)}</td></tr>
+   <tr><td>3. Beta moves towards 1.0 (stocks fall together)</td><td class="n">${eqs==='calm'?'0.00':(c3>=0?'+':'')+fmt(c3)}</td></tr>
+   <tr><td><b>Total change</b></td><td class="n"><b>${eqs==='calm'?'0.00':(r.ke-b.ke>=0?'+':'')+fmt(r.ke-b.ke)}</b></td></tr></tbody>`;
+  const irr=9.0, pass=irr>show.wacc;
+  $('#projLine').innerHTML=`A project with a 9.0% expected return is compared with a WACC of <b>${fmt(show.wacc)}%</b>. It <b style="color:var(${pass?'--good':'--bad'})">${pass?'passes':'fails'}</b>${eqs==='stress'?' in the stress market (calm-market WACC was '+fmt(b.wacc)+'%).':'. Switch to the stress market to test it again.'}`;
+}
+document.querySelectorAll('#eqSeg button').forEach(b=>b.onclick=()=>{eqs=b.dataset.e;document.querySelectorAll('#eqSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));paintM4();});
+
+/* ---------- Module 5 ---------- */
+function drawM5(){
+  const M=DATA.macro, x=M.map(r=>r.month), band=m=>m>='2026-01';
+  const tk=(m)=>m.endsWith('-01')&&(+m.slice(0,4))%2===0;
+  const xf=m=>m.slice(0,4);
+  const cs=[
+   {t:'Inflation: CPI, year on year',n:'So what: headline jumped in spring 2026 while core stayed near 2.5%. The shock is energy, not demand.',sw:i=>{const r=M[i]; if(r.cpi_yoy==null) return 'No data this month.'; const g=r.cpi_yoy-r.core_cpi_yoy; return (r.cpi_yoy>3?'Inflation above 3%: rate cuts unlikely. ':r.cpi_yoy<2?'Inflation below the 2% target: room to cut. ':'Near the 2% target. ')+(Math.abs(g)>0.6?(g>0?'Headline above core: an energy or food shock.':'Headline below core: energy prices falling.'):'');},s:[{name:'Headline CPI',v:M.map(r=>r.cpi_yoy),c:'--s2'},{name:'Core CPI',v:M.map(r=>r.core_cpi_yoy),c:'--s1'}]},
+   {t:'Unemployment rate',n:'So what: unemployment fell in 2026. A tight labour market gives the Fed less room to cut.',sw:i=>{const v=M[i].unemployment; if(v==null) return 'No data this month.'; return v>6?'High unemployment: rates are likely to stay low to support jobs.':v<4.2?'Tight labour market: wage pressure, rates stay higher.':'Labour market in balance.';},s:[{name:'Unemployment',v:M.map(r=>r.unemployment),c:'--s1'}]},
+   {t:'Policy rate: fed funds vs 3-month bill',n:'So what: when the bill trades above fed funds, the market expects hikes. That happened in Sep 2026.',sw:i=>{const r=M[i]; if(r.y3m==null||r.fed_funds==null) return ''; const g=r.y3m-r.fed_funds; return g>0.15?'Bill above fed funds: the market expects rate rises.':g<-0.15?'Bill below fed funds: the market expects rate cuts.':'Bill close to fed funds: no change expected.';},s:[{name:'Fed funds',v:M.map(r=>r.fed_funds),c:'--s1'},{name:'3-month bill',v:M.map(r=>r.y3m),c:'--s2'}]},
+   {t:'10-year breakeven inflation',n:'So what: long-run inflation expectations barely moved in 2026. Markets see the oil shock as temporary.',sw:i=>{const v=M[i].breakeven_10y; return v>2.5?'Expectations above 2.5%: investors fear lasting inflation.':v<1.8?'Expectations low: investors fear weak growth.':'Expectations anchored near the 2% target.';},s:[{name:'Breakeven',v:M.map(r=>r.breakeven_10y),c:'--s1'}]},
+   {t:'10-year term premium (model estimate)',n:'So what: the term premium rose all through 2026. Lenders want more pay to lock money up for 10 years.',sw:i=>{const v=M[i].term_premium_10y; return v>0.75?'High term premium: long-term debt is expensive. Consider shorter debt or wait.':v<0?'Negative term premium: long-term money is unusually cheap. Lock it in.':'Moderate term premium.';},s:[{name:'Term premium',v:M.map(r=>r.term_premium_10y),c:'--s1'}]},
+   {t:'US 10-year Treasury yield',n:'So what: the risk-free rate in every valuation reached its highest level since 2007 in Sep 2026.',sw:i=>{const v=M[i].y10; return v>4.75?'Above 4.75%: the highest band since 2007. Hurdle rates rise.':v<2?'Below 2%: very cheap long-term money. Lock it in.':'';},s:[{name:'10-year yield',v:M.map(r=>r.y10),c:'--s1'}]}
+  ];
+  $('#sigCharts').innerHTML=cs.map((c,i)=>`<div class="card"><p class="ctitle">${c.t}</p><p class="cnote">${c.n}</p><div class="chart" id="sc${i}"></div></div>`).join('');
+  const zero=[true,false,true,false,false,false];
+  cs.forEach((c,i)=>lineChart($('#sc'+i),{x,series:c.s,unit:'%',band,tick:tk,xfmt:m=>mlabel(m),h:200,label:c.t,sw:c.sw}));
+  // fix tick label format to year only
+  document.querySelectorAll('#sigCharts svg text').forEach(t=>{ if(/^[A-Z][a-z]{2} \d{4}$/.test(t.textContent)) t.textContent=t.textContent.slice(4); });
+  // signal table
+  const last=k=>{for(let i=M.length-1;i>=0;i--) if(M[i][k]!=null) return M[i];};
+  const sg=[
+   ['Headline CPI','cpi_yoy','up','Price pressure is back. Rate cuts become less likely.'],
+   ['Core CPI','core_cpi_yoy','flat','The underlying trend is stable. The jump is in energy and food.'],
+   ['Unemployment','unemployment','down','A tight labour market supports higher rates.'],
+   ['Fed funds rate','fed_funds','up','The Fed has started to raise rates again.'],
+   ['10-year breakeven','breakeven_10y','flat','The market does not expect a lasting inflation problem.'],
+   ['10-year term premium','term_premium_10y','up','Lenders want more pay for long-term risk. Long-term debt gets expensive.'],
+   ['10-year yield','y10','up','The risk-free rate in every valuation is higher.']
+  ];
+  const arrow={up:'<span class="pill hi">Rising</span>',down:'<span class="pill md">Falling</span>',flat:'<span class="pill lo">Stable</span>'};
+  let h='<thead><tr><th>Signal</th><th class="n">Feb 2026<div class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400">monthly</div></th><th class="n">Latest</th><th>Direction</th><th>What it tells the CFO</th></tr></thead><tbody>';
+  h+=`<tr data-sw="An oil shock raises headline inflation within months and slows growth. It is the main reason US headline CPI jumped in 2026."><td><b>Oil (Brent)</b><div class="small muted">news</div></td><td class="n">pre-war</td><td class="n up">$123 peak<div class="small muted">30 Apr 2026</div></td><td><span class="pill hi">Rising</span></td><td>War began 28 Feb. Hormuz effectively closed. Brent rose about 60% in March.</td></tr>`;
+  sg.forEach(([n,k,d,w])=>{ const l=last(k); h+=`<tr data-sw="${w}"><td><b>${n}</b></td><td class="n">${fmt(feb[k])}%</td><td class="n ${d==='up'?'up':''}">${fmt(l[k])}%<div class="small muted">${mlabel(l.month)}</div></td><td>${arrow[d]}</td><td>${w}</td></tr>`; });
+  $('#sigTbl').innerHTML=h+'</tbody>';
+  // curve
+  const C=DATA.curve, mats=['3m','2y','5y','10y','30y'];
+  lineChart($('#cCurve'),{x:['3-month','2-year','5-year','10-year','30-year'],series:[{name:'27 Feb 2026',v:mats.map(m=>C[0][m]),c:'--s1'},{name:'8 Oct 2026',v:mats.map(m=>C[1][m]),c:'--s2'}],unit:'%',points:true,tickEvery:1,h:210,label:'US yield curve',sw:i=>{const a=C[0][mats[i]],b=C[1][mats[i]]; return `Up ${fmt(b-a)} points at this maturity. `+(i>=3?'The long end rose most: lenders want more for long-term risk. Long-term debt is now the expensive choice.':'Short rates rose less: the Fed has moved only a little so far.');}});
+  const mk=DATA.markets; $('#mkAsof').textContent='Yields to 8 Oct 2026 close; dollar index, US 100 and gold to '+dlabel(mk.asof)+'.';
+  const pick=(arr,m)=>{const r=arr.find(z=>z.m===m);return r?r.v:null;};
+  const ms=['2026-02','2026-06','2026-10'];
+  const lab={dxy:'Dollar index',us100:'US 100 (equities)',gold:'Gold ($/oz)'};
+  let t='<thead><tr><th>Market</th><th class="n">Feb 2026</th><th class="n">Jun 2026</th><th class="n">Latest</th><th class="n">Change</th></tr></thead><tbody>';
+  ['dxy','us100','gold'].forEach(k=>{ const a=pick(mk[k],ms[0]), z=pick(mk[k],ms[2]); t+=`<tr><td>${lab[k]}</td>${ms.map(m=>`<td class="n">${pick(mk[k],m).toLocaleString('en-US',{minimumFractionDigits:k==='dxy'?1:0,maximumFractionDigits:k==='dxy'?1:0})}</td>`).join('')}<td class="n">${((z/a-1)*100>=0?'+':'')+((z/a-1)*100).toFixed(1)}%</td></tr>`; });
+  t+=`<tr><td>US 10-year yield</td><td class="n">${fmt(C[0]['10y'])}%</td><td class="n">${fmt(mrow('2026-06').y10)}%</td><td class="n">${fmt(C[1]['10y'])}%</td><td class="n up">+${fmt(C[1]['10y']-C[0]['10y'])} pts</td></tr>`;
+  $('#mkTbl').innerHTML=t+'</tbody>';
+  const n=$('#mkTbl').closest('div').parentElement.querySelector('.cnote'); if(n) n.textContent='Bonds and equities are telling different stories. Feb and Jun are month-end closes. Yield columns are 27 Feb, Jun average and 8 Oct.';
+}
+
+/* ---------- Module 6: two-round funding exercise ---------- */
+const EX={
+  P:150, s0:1.50, cash:40, wc:20, buffer:25, bb:30, bbValue:5,
+  R:[
+    {date:'1 March 2026', y:DATA.curve[0]['10y'], bill:3.79, months:9.5,
+     news:['<b>28 Feb:</b> a US-Iran war begins. Gulf shipping through the Strait of Hormuz is at risk.'],
+     rows:[['US 10-year yield (27 Feb)',DATA.curve[0]['10y']],['3-month bill (27 Feb)',DATA.curve[0]['3m']],['Headline CPI (Jan)',mrow('2026-01').cpi_yoy],['Core CPI (Jan)',mrow('2026-01').core_cpi_yoy],['Unemployment (Jan)',mrow('2026-01').unemployment],['Fed funds (Feb)',feb.fed_funds]]},
+    {date:'15 April 2026', y:4.28, bill:3.82, months:8,
+     news:['<b>8 Apr:</b> the US and Iran agree a ceasefire.','The Strait of Hormuz is still blocked. Saudi Arabia says shipping will not fully resume until June.','Brent rose about 60% in March.'],
+     rows:[['US 10-year yield (15 Apr)',4.28],['Change since round 1','+'+fmt(4.28-DATA.curve[0]['10y'])+' pts'],['Headline CPI (Mar)',mrow('2026-03').cpi_yoy],['Core CPI (Mar)',mrow('2026-03').core_cpi_yoy],['Unemployment (Mar)',mrow('2026-03').unemployment],['Fed funds (Mar)',mrow('2026-03').fed_funds]]}
+  ],
+  paths:{
+    A:{n:'What happened',yD:DATA.curve[1]['10y'],sD:1.80,pen:3.0,d:`The US 10-year reached ${fmt(DATA.curve[1]['10y'])}% by 8 Oct. With the firm on rating watch, its credit spread widens to 1.80 points (illustrative).`},
+    H:{n:'What could have happened (hypothetical)',yD:3.40,sD:1.50,pen:1.0,d:'The ceasefire holds, oil falls, growth slows and the Fed cuts. The US 10-year falls to 3.40% by December. Spreads do not move.'}
+  }
+};
+let exS={round:0, l:[0,0], h:[0,0], bb:false};
+function exAmounts(s){ const P=EX.P; const L1=P*s.l[0]/100, H1=P*s.h[0]/100, W1=P-L1-H1; const L2=W1*s.l[1]/100, H2=W1*s.h[1]/100, W=W1-L2-H2; return {L1,H1,W1,L2,H2,W}; }
+function exCushion(s,a){ return {r1:EX.cash-EX.wc-(s.bb?EX.bb:0)+a.L1, r2:EX.cash-EX.wc-(s.bb?EX.bb:0)+a.L1+a.L2}; }
+function exCost(s,pk){
+  const p=EX.paths[pk], a=exAmounts(s), R=EX.R, c=exCushion(s,a);
+  const lockR=[R[0].y+EX.s0, R[1].y+EX.s0], hedgeR=[R[0].y+p.sD, R[1].y+p.sD], waitR=p.yD+p.sD;
+  const interest=10*(a.L1*lockR[0]+a.H1*hedgeR[0]+a.L2*lockR[1]+a.H2*hedgeR[1]+a.W*waitR)/100;
+  const carry=a.L1*(lockR[0]-R[0].bill)/100*R[0].months/12 + a.L2*(lockR[1]-R[1].bill)/100*R[1].months/12;
+  const short=Math.max(0,EX.buffer-c.r2), penalty=short*p.pen/100;
+  const bbv=s.bb?EX.bbValue:0;
+  const coupon=(a.L1*lockR[0]+a.H1*hedgeR[0]+a.L2*lockR[1]+a.H2*hedgeR[1]+a.W*waitR)/EX.P;
+  return {total:interest+carry+penalty-bbv, interest, carry, penalty, bbv, coupon, short, c};
+}
+function exBest(pk){ let best=1e9; for(const bb of [false,true]) for(const s of [{l:[100,0],h:[0,0]},{l:[0,0],h:[100,0]},{l:[0,100],h:[0,0]},{l:[0,0],h:[0,100]},{l:[0,0],h:[0,0]}]){ const v=exCost({...s,bb},pk).total; if(v<best) best=v; } return best; }
+function drawExRound(){
+  const r=exS.round, R=EX.R[r], a=exAmounts(exS), open=r===0?EX.P:a.W1, c=exCushion(exS,a);
+  const lk=exS.l[r], hg=exS.h[r], wt=100-lk-hg;
+  const cushion=r===0?c.r1:c.r2;
+  $('#exRound').innerHTML=`
+   <div class="ex-step"><span class="${r===0?'on':'done'}">Round 1 · 1 Mar</span><span class="${r===1?'on':''}">Round 2 · 15 Apr</span><span>Outcome</span></div>
+   <h3 style="margin-top:10px">Round ${r+1}: ${R.date}</h3>
+   <div class="ex-news">${R.news.map(n=>'<div>'+n+'</div>').join('')}</div>
+   <table class="small" style="margin-top:8px"><tbody>${R.rows.map(([n,v])=>`<tr><td>${n}</td><td class="n">${typeof v==='number'?fmt(v)+'%':v}</td></tr>`).join('')}</tbody></table>
+   <h3 style="margin-top:14px">Decide for the $${fmt(open,0)}m still open${r===1&&(a.L1+a.H1)>0?` <span class="muted small">($${fmt(a.L1,0)}m locked and $${fmt(a.H1,0)}m hedged in round 1)</span>`:''}</h3>
+   <div class="slider"><label for="exL">Lock now <small>at ${fmt(R.y+EX.s0)}% fixed for 10 years</small></label><output>${lk}%</output><input type="range" id="exL" min="0" max="100" step="10" value="${lk}"></div>
+   <div class="slider"><label for="exH">Hedge <small>fixes the Treasury part at ${fmt(R.y)}%</small></label><output>${hg}%</output><input type="range" id="exH" min="0" max="${100-lk}" step="10" value="${hg}"></div>
+   <div class="ex-split"><div style="width:${lk}%;background:var(--s1)"></div><div style="width:${hg}%;background:var(--s3)"></div><div style="width:${wt}%;background:var(--surface-2)"></div></div>
+   <div class="small muted">Lock $${fmt(open*lk/100,0)}m · Hedge $${fmt(open*hg/100,0)}m · Wait $${fmt(open*wt/100,0)}m</div>
+   ${r===0?`<div style="margin-top:12px"><div class="small" style="font-weight:500;margin-bottom:4px">The board's $30m share buyback</div><div class="seg" id="exBB"><button data-v="0" aria-pressed="${!exS.bb}">Decline</button><button data-v="1" aria-pressed="${exS.bb}">Approve</button></div></div>`:''}
+   <div class="ex-cush ${cushion<EX.buffer?'bad':'ok'}" data-sw="Cash on hand minus the extra working capital, minus the buyback if approved, plus any money raised early by locking now. The board wants at least $25m.">Cash buffer after this round: <b>$${fmt(cushion,0)}m</b> ${cushion<EX.buffer?'(below the $25m the board wants)':'(above the $25m the board wants)'}</div>
+   <button class="btn primary" id="exGo" style="margin-top:12px">${r===0?'Confirm round 1':'Confirm round 2 and see the outcome'}</button>
+   ${r===1?'<button class="btn" id="exBack" style="margin-top:12px;margin-left:6px">Back to round 1</button>':''}`;
+  $('#exL').oninput=e=>{ exS.l[r]=+e.target.value; if(exS.l[r]+exS.h[r]>100) exS.h[r]=100-exS.l[r]; drawExRound(); };
+  $('#exH').oninput=e=>{ exS.h[r]=Math.min(+e.target.value,100-exS.l[r]); drawExRound(); };
+  if(r===0) document.querySelectorAll('#exBB button').forEach(b=>b.onclick=()=>{exS.bb=b.dataset.v==='1';drawExRound();});
+  $('#exGo').onclick=()=>{ if(r===0){ exS.round=1; drawExRound(); } else { drawReveal(); $('#reveal').classList.remove('hidden'); $('#reveal').scrollIntoView({behavior:'smooth',block:'start'}); } };
+  if(r===1) $('#exBack').onclick=()=>{ exS.round=0; $('#reveal').classList.add('hidden'); drawExRound(); };
+}
+function drawReveal(){
+  const you=exS, bestA=exBest('A'), bestH=exBest('H');
+  const plans=[['Your plan',you],['Lock all in March',{l:[100,0],h:[0,0],bb:you.bb}],['Wait for all',{l:[0,0],h:[0,0],bb:you.bb}],['Hedge all in March',{l:[0,0],h:[100,0],bb:you.bb}],['Split in March: half lock, half hedge',{l:[50,0],h:[50,0],bb:you.bb}]];
+  const rows=plans.map(([n,s])=>{ const A=exCost(s,'A'), H=exCost(s,'H'); const rA=A.total-bestA, rH=H.total-bestH; return {n,A,H,rA,rH,worst:Math.max(rA,rH)}; });
+  const minWorst=Math.min(...rows.map(r=>r.worst));
+  const yA=exCost(you,'A'), yH=exCost(you,'H');
+  const card=(pk,c,reg)=>{ const p=EX.paths[pk]; return `<div class="card"><div class="small muted">${pk==='H'?'<span class="pill md">Hypothetical</span>':'<span class="pill lo">Actual data</span>'}</div><h3 style="margin:6px 0 4px">${p.n}</h3><p class="small" style="margin:0 0 8px;color:var(--ink-2)">${p.d}</p>
+    <div class="kpis"><div class="kpi"><div class="l">Average new coupon</div><div class="v">${fmt(c.coupon)}%</div></div><div class="kpi"><div class="l">10-year cost, net</div><div class="v">$${fmt(c.total,1)}m</div><div class="d">interest $${fmt(c.interest,1)}m · carry $${fmt(c.carry,1)}m${c.penalty?` · buffer shortfall $${fmt(c.penalty,1)}m`:''}${c.bbv?` · buyback value -$${fmt(c.bbv,1)}m`:''}</div></div><div class="kpi"><div class="l">Cost vs the best choice</div><div class="v" style="color:var(${reg<1?'--good':reg<8?'--warn':'--bad'})">+$${fmt(reg,1)}m</div><div class="d">the regret on this path</div></div></div></div>`; };
+  // chart
+  const D=DATA.daily, i0=D.findIndex(r=>r.d>='2026-04-15'), n=D.length;
+  const hyp=D.map((r,i)=> i<i0?null: +(4.28+(3.40-4.28)*(i-i0)/(n-1-i0)).toFixed(2));
+  $('#reveal').innerHTML=`<h3>Outcome: your plan on two paths</h3>
+    <div class="chart" id="cReveal"></div>
+    <div class="grid2" style="margin-top:12px">${card('A',yA,yA.total-bestA)}${card('H',yH,yH.total-bestH)}</div>
+    <div class="card" style="margin-top:12px"><h3>Compare with simple plans <span class="small muted">(same buyback choice as yours)</span></h3>
+      <p class="small muted" style="margin-top:0">Regret = extra cost compared with the best choice on that path. A careful CFO picks the plan with the smallest worst-case regret.</p>
+      <div class="tablewrap"><table><thead><tr><th>Plan</th><th class="n">Regret: what happened</th><th class="n">Regret: hypothetical</th><th class="n">Worst case</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr style="${r.n==='Your plan'?'font-weight:600;background:var(--surface-2)':''}"><td>${r.n}${Math.abs(r.worst-minWorst)<0.05?' <span class="pill lo">smallest worst case</span>':''}</td><td class="n ${r.rA>8?'up':''}">+$${fmt(r.rA,1)}m</td><td class="n ${r.rH>8?'up':''}">+$${fmt(r.rH,1)}m</td><td class="n"><b>+$${fmt(r.worst,1)}m</b></td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="small" style="margin:10px 0 0"><b>Read this:</b> the hedge fixes only the Treasury rate. On the path that happened, the firm's own spread widened, so the hedge protected less than locking. Locking costs carry and loses if rates fall. Waiting wins only if you guess the path right.</p>
+    </div>
+    <p class="small muted" style="margin-top:10px">Method: 10-year interest on $150m, simple and not discounted, plus negative carry until December, plus a one-year cost on any buffer shortfall (3% on the actual path, 1% on the hypothetical), minus $5m of illustrative value if the buyback is approved. The hypothetical path is not a forecast; it shows a plausible alternative.</p>`;
+  lineChart($('#cReveal'),{x:D.map(r=>r.d),series:[{name:'US 10-year: what happened',v:D.map(r=>r.y10),c:'--s1'},{name:'US 10-year: hypothetical path',v:hyp,c:'--s2'}],unit:'%',
+    tick:(d,i)=>i>0&&D[i-1].d.slice(0,7)!==d.slice(0,7)&&+d.slice(5,7)%2===1,xfmt:d=>dlabel(d),vline:['2026-02-27','2026-04-15'],vlabel:['Round 1','Round 2'],h:220,label:'US 10-year after your decisions',
+    sw:i=>D[i].d<'2026-02-27'?'Before round 1.':D[i].d<'2026-04-15'?'Between round 1 and round 2. The war has started; the ceasefire has not.':'After round 2. The two paths split here: the blue line is what happened, the orange line is the hypothetical.'});
+  document.querySelectorAll('#cReveal svg text').forEach(t=>{ const m=t.textContent.match(/^\d+ ([A-Z][a-z]{2}) (\d{4})$/); if(m) t.textContent=m[1]; });
+}
+drawExRound();
+
+/* ---------- Feedback form (Google Forms) ---------- */
+/* To connect: paste the form's formResponse URL and each question's entry ID below. */
+const FEEDBACK={ action:'https://docs.google.com/forms/d/e/1FAIpQLSfuTuYIPA6ua5E7Kunfwu_Sq0C3vFwW5fuywEbEGrfGQxhx0Q/formResponse', fields:{ q1:'entry.1214376286', q2:'entry.903545535', q3:'entry.1237441717', q4:'entry.656377324', name:'entry.202900137', linkedin:'' } };
+(function(){
+  const f=$('#fbForm'); if(!f) return;
+  f.addEventListener('submit',e=>{
+    if(!FEEDBACK.action){ e.preventDefault(); $('#fbOff').style.display='block'; return; }
+    const any=[...f.querySelectorAll('[data-k]')].some(el=>el.value.trim());
+    if(!any){ e.preventDefault(); return; }
+    f.action=FEEDBACK.action;
+    const nm=$('#f5'), li=$('#f6'); if(!FEEDBACK.fields.linkedin && li.value.trim()){ nm.value=(nm.value.trim()?nm.value.trim()+' | ':'')+'LinkedIn: '+li.value.trim(); }
+    f.querySelectorAll('[data-k]').forEach(el=>{ const id=FEEDBACK.fields[el.dataset.k]; if(id) el.name=id; else el.removeAttribute('name'); });
+    setTimeout(()=>{ f.querySelectorAll('[data-k]').forEach(el=>el.value=''); $('#fbSent').style.display='block'; },400);
+  });
+})();
+
+/* ---------- draw ---------- */
+function redrawAll(){ drawM1(); if(cur===1) drawM2(); if(cur===2) drawM3(); if(cur===3) drawM4(); if(cur===4) drawM5(); if(cur===5){ drawExRound(); if(!$('#reveal').classList.contains('hidden')) drawReveal(); } }
+let start=0; try{ const h=parseInt(location.hash.slice(1)); if(h>=1&&h<=mods.length) start=h-1; }catch(e){}
+drawM3(); drawM4(); go(start); try{ if(location.hash==='#ng') openNG(); }catch(e){}
+</script>
+</body>
+</html>
